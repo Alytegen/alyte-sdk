@@ -46,6 +46,19 @@ export class AlyteMerchant {
     return this.t.request('POST', '/v1/integration/merchants', input);
   }
 
+  /**
+   * Public discovery is OPT-IN and off by default. Flipping `discoverable: true`
+   * publishes the shop window (events, tiers, prices, availability states — never
+   * counts or PSP data) at `/v1/discovery/merchants/:id` and the ACP product feed
+   * at `…/feed.jsonl`. `imageUrl` is the shop image the feed requires.
+   */
+  updateShopDiscovery(
+    merchantId: string,
+    input: { discoverable?: boolean; imageUrl?: string | null },
+  ): Promise<{ merchant: Merchant }> {
+    return this.t.request('PATCH', `/v1/integration/merchants/${encodeURIComponent(merchantId)}`, input);
+  }
+
   createEvent(input: { merchantId: string; title: string; startsAt: string }): Promise<{ event: EventItem }> {
     return this.t.request('POST', '/v1/integration/events', input);
   }

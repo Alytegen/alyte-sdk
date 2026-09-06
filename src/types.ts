@@ -18,6 +18,9 @@ export interface Merchant {
   allowedSchemes?: Scheme[];
   feeBearer?: FeeBearer;
   taxRateBps?: number;
+  /** Public discovery opt-in (default false) — see AlyteMerchant.updateShopDiscovery. */
+  discoverable?: boolean;
+  imageUrl?: string;
 }
 
 export interface EventItem {
