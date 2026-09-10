@@ -21,6 +21,8 @@ export interface Merchant {
   /** Public discovery opt-in (default false) — see AlyteMerchant.updateShopDiscovery. */
   discoverable?: boolean;
   imageUrl?: string;
+  /** The ONE partner origin allowed to embed the authorize page (G14). */
+  embedOrigin?: string;
 }
 
 export interface EventItem {

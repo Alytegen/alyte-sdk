@@ -54,7 +54,7 @@ export class AlyteMerchant {
    */
   updateShopDiscovery(
     merchantId: string,
-    input: { discoverable?: boolean; imageUrl?: string | null },
+    input: { discoverable?: boolean; imageUrl?: string | null; embedOrigin?: string | null },
   ): Promise<{ merchant: Merchant }> {
     return this.t.request('PATCH', `/v1/integration/merchants/${encodeURIComponent(merchantId)}`, input);
   }
