@@ -1,15 +1,25 @@
 {
   "name": "@alyte/sdk",
-  "version": "0.1.0",
-  "description": "Alyte client SDK — merchant integration (catalog, PSP links, buyer sessions, payments visibility) and the agent buy path (discover → quote → hold → confirm).",
+  "version": "0.2.0",
+  "description": "Alyte client SDK \u2014 merchant integration (catalog, PSP links, buyer sessions, payments visibility) and the agent buy path (discover \u2192 quote \u2192 hold \u2192 confirm).",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "files": ["dist", "QUICKSTART.md"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "QUICKSTART.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "license": "UNLICENSED"
 }

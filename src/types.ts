@@ -143,3 +143,51 @@ export interface BuyerSessionMint {
    *  redirect your user there to drop them into the shop's authorize page. */
   redeemPath: string;
 }
+
+/** A row on the merchant payments feed (`GET /v1/integration/payments`). */
+export interface PaymentRow {
+  intentId: string;
+  tenantId: string;
+  merchantId: string;
+  amountMinor: number;
+  currency: string;
+  /** 'pending' | 'authorized' | 'declined' | 'error' — FULFIL on 'authorized'
+   *  (terminal for ticketing: the seat is sold and the charge is captured). */
+  status: string;
+  pspId?: string;
+  scheme?: string;
+  source?: string;
+  createdBy: string;
+  createdAt: string;
+  /** The paid ticket tier — fulfil on THIS, never by price-matching. Absent only
+   *  on legacy rows. */
+  tierId?: string;
+  quantity?: number;
+  /** Stable opaque buyer reference (byr_…) — never an email. Map it to your own
+   *  customer record at buyer-session mint time if you need contact details. */
+  buyerRef?: string;
+}
+
+/** A registered webhook endpoint (secret is returned ONCE, at create). */
+export interface WebhookEndpoint {
+  id: string;
+  url: string;
+  status: 'active' | 'disabled';
+  description?: string;
+  createdAt: string;
+}
+
+/** Agent adoption + per-tier watch demand for one shop (counts only). */
+export interface MerchantInsights {
+  agents: { total: number; alyte: number; byoa: number; readyToBuy: number };
+  watches: Array<{
+    tierId: string;
+    tierTitle: string;
+    eventTitle: string;
+    queued: number;
+    fired: number;
+    failed: number;
+    cancelled: number;
+    expired: number;
+  }>;
+}

@@ -9,6 +9,9 @@ import type {
   TierKind,
   FeeBearer,
   Scheme,
+  PaymentRow,
+  WebhookEndpoint,
+  MerchantInsights,
 } from './types.js';
 
 /**
@@ -121,13 +124,47 @@ export class AlyteMerchant {
     return this.t.request('POST', `/v1/integration/merchants/${encodeURIComponent(merchantId)}/psps`, input);
   }
 
-  listPayments(limit?: number): Promise<{ payments: unknown[] }> {
-    return this.t.request('GET', `/v1/integration/payments${limit ? `?limit=${limit}` : ''}`);
+  /**
+   * The payments feed, newest first. Poll with `since` = the newest `createdAt`
+   * you have seen and dedupe by `intentId`. FULFIL on `status === 'authorized'`
+   * using `tierId` + `quantity` — never by price-matching. Do not advance your
+   * cursor past a row that is still `pending` (it becomes `authorized` seconds
+   * later and `since` would skip it) — or use webhooks, which only fire on
+   * authorized and have no such race.
+   */
+  listPayments(opts?: { limit?: number; since?: string } | number): Promise<{ payments: PaymentRow[] }> {
+    const o = typeof opts === 'number' ? { limit: opts } : (opts ?? {});
+    const q = new URLSearchParams();
+    if (o.limit) q.set('limit', String(o.limit));
+    if (o.since) q.set('since', o.since);
+    const qs = q.toString();
+    return this.t.request('GET', `/v1/integration/payments${qs ? `?${qs}` : ''}`);
   }
 
   getPayment(intentId: string): Promise<unknown> {
     return this.t.request('GET', `/v1/integration/payments/${encodeURIComponent(intentId)}`);
   }
+
+  /** Agent adoption + per-tier watch demand for a shop (counts only — the
+   *  "N in line" number; never buyer identities). */
+  insights(merchantId: string): Promise<MerchantInsights> {
+    return this.t.request('GET', `/v1/integration/merchants/${encodeURIComponent(merchantId)}/insights`);
+  }
+
+  readonly webhooks = {
+    /**
+     * Register a payment.settled push endpoint (https; ≤3 active per account).
+     * The returned `secret` (whsec_…) is shown ONLY here — store it like a
+     * password and verify every delivery with `verifyWebhookSignature`.
+     */
+    create: (input: { url: string; description?: string }): Promise<{ webhook: WebhookEndpoint; secret: string }> =>
+      this.t.request('POST', '/v1/integration/webhooks', input),
+    list: (): Promise<{ webhooks: WebhookEndpoint[] }> =>
+      this.t.request('GET', '/v1/integration/webhooks'),
+    /** Disable an endpoint — delivery (including queued retries) stops immediately. */
+    delete: (id: string): Promise<{ ok: boolean }> =>
+      this.t.request('DELETE', `/v1/integration/webhooks/${encodeURIComponent(id)}`),
+  };
 
   readonly buyerSessions = {
     /**
