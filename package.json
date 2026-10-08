@@ -1,7 +1,7 @@
 {
-  "name": "@alyte/sdk",
-  "version": "0.2.0",
-  "description": "Alyte client SDK \u2014 merchant integration (catalog, PSP links, buyer sessions, payments visibility) and the agent buy path (discover \u2192 quote \u2192 hold \u2192 confirm).",
+  "name": "@alytegen/sdk",
+  "version": "0.3.0",
+  "description": "Alyte client SDK — merchant integration (catalog, PSP links, buyer sessions, payments visibility) and the agent buy path (discover → quote → hold → confirm).",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,13 +13,40 @@
   },
   "files": [
     "dist",
-    "QUICKSTART.md"
+    "QUICKSTART.md",
+    "examples"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
   },
   "engines": {
     "node": ">=18"
   },
-  "license": "UNLICENSED"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alytegen/alyte-sdk.git"
+  },
+  "homepage": "https://github.com/Alytegen/alyte-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/Alytegen/alyte-sdk/issues"
+  },
+  "keywords": [
+    "alyte",
+    "agentic-commerce",
+    "ai-agents",
+    "payments",
+    "mandate",
+    "ticketing",
+    "sdk"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  }
 }

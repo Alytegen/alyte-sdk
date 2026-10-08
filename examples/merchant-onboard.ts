@@ -5,7 +5,7 @@
  *   ALYTE_API_TOKEN=<console-minted, merchant:read+merchant:write> \
  *   npx tsx merchant-onboard.ts
  */
-import { AlyteMerchant } from '@alyte/sdk';
+import { AlyteMerchant } from '@alytegen/sdk';
 
 const alyte = new AlyteMerchant({
   baseUrl: process.env.ALYTE_BASE_URL!,

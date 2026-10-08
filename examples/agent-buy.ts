@@ -5,7 +5,7 @@
  *   ALYTE_BASE_URL=… ALYTE_AGENT_TOKEN=… npx tsx agent-buy.ts
  */
 import { randomUUID } from 'node:crypto';
-import { AlyteAgent, AlyteApiError } from '@alyte/sdk';
+import { AlyteAgent, AlyteApiError } from '@alytegen/sdk';
 
 const agent = new AlyteAgent({
   baseUrl: process.env.ALYTE_BASE_URL!,

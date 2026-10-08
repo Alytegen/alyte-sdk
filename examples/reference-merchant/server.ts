@@ -26,7 +26,7 @@
  * ONLY part you must replace — and §3 explains exactly why the shape matters.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { createWebhookHandler, type PaymentSettled, type WatchFailed } from '@alyte/sdk';
+import { createWebhookHandler, type PaymentSettled, type WatchFailed } from '@alytegen/sdk';
 
 const BASE_URL = required('ALYTE_BASE_URL');
 const API_TOKEN = required('ALYTE_API_TOKEN');
