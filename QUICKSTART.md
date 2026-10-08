@@ -1,4 +1,4 @@
-# @alyte/sdk — quickstart
+# @alytegen/sdk — quickstart
 
 Two clients, two credentials:
 
@@ -8,13 +8,13 @@ Two clients, two credentials:
 | `AlyteAgent` | agent JWT | your agent runtime | discover → quote → hold → confirm |
 
 ```bash
-npm install @alyte/sdk        # zero dependencies, Node ≥18 (built-in fetch)
+npm install @alytegen/sdk        # zero dependencies, Node ≥18 (built-in fetch)
 ```
 
 ## Merchant: onboard in five calls
 
 ```ts
-import { AlyteMerchant } from '@alyte/sdk';
+import { AlyteMerchant } from '@alytegen/sdk';
 
 const alyte = new AlyteMerchant({ baseUrl: ALYTE_URL, token: API_TOKEN });
 
@@ -49,7 +49,7 @@ via the email magic-link fallback is the same buyer.
 ## Agent: the buy path
 
 ```ts
-import { AlyteAgent } from '@alyte/sdk';
+import { AlyteAgent } from '@alytegen/sdk';
 const agent = new AlyteAgent({ baseUrl: ALYTE_URL, token: AGENT_JWT });
 
 const { events } = await agent.discoverInventory(merchantId);   // live availability + on-sale windows
@@ -64,4 +64,7 @@ No amount is ever passed at confirm — the charge is the locked quote. Refusals
 throw `AlyteApiError` with a **stable `code`**: a spend-cap refusal means the
 buyer's mandate said no; surface it, don't retry.
 
-Full runnable examples: [`examples/merchant-onboard.ts`](examples/merchant-onboard.ts), [`examples/agent-buy.ts`](examples/agent-buy.ts).
+Full runnable examples: [`examples/merchant-onboard.ts`](https://github.com/Alytegen/alyte-sdk/blob/main/examples/merchant-onboard.ts),
+[`examples/agent-buy.ts`](https://github.com/Alytegen/alyte-sdk/blob/main/examples/agent-buy.ts), and the complete
+reference integration — buyer hand-off, signed webhook receipt, exactly-once fulfilment, self-diagnosis — in
+[`examples/reference-merchant/server.ts`](https://github.com/Alytegen/alyte-sdk/blob/main/examples/reference-merchant/server.ts).
