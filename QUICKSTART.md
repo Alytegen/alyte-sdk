@@ -37,9 +37,16 @@ When a signed-in user wants an AI agent shopping for them, **your server attests
 them** and you redirect:
 
 ```ts
-const s = await alyte.buyerSessions.mint({ merchantId: merchant.id, email: user.email });
+const s = await alyte.buyerSessions.mint({
+  merchantId: merchant.id, email: user.email,
+  lang: user.locale,          // optional: Alyte's pages open in the language of YOUR site
+});
 res.redirect(ALYTE_URL + s.redeemPath);   // single-use, 15-min TTL
 ```
+
+Embedding instead of redirecting? Add the same language to the iframe:
+`<iframe src="ALYTE_URL/shop/MERCHANT_ID/authorize?lang=de">`. The buyer can still
+switch language on the page; their choice is remembered.
 
 They land authenticated on the shop's authorize page: pick or bring an agent,
 set a spending cap and scope — all enforced server-side by Alyte on every

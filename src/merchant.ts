@@ -172,7 +172,19 @@ export class AlyteMerchant {
      * Redirect the user to `baseUrl + redeemPath`; the buyer-session cookie and
      * the shop's authorize page take over from there.
      */
-    mint: (input: { merchantId: string; email: string }): Promise<BuyerSessionMint> =>
+    mint: (input: {
+      merchantId: string;
+      email: string;
+      /** The tier the buyer chose — opens the authorize page as a checkout for it. */
+      tierId?: string;
+      /** Ticket count hint (1–10); the buyer's permission and tier limits still govern. */
+      quantity?: number;
+      /** Where "back to the shop" points afterwards (https, under your embed origin). */
+      returnUrl?: string;
+      /** The buyer's language on YOUR site (BCP-47, e.g. "de" or "de-AT"), so Alyte's
+       *  pages open in the same language. Presentation only. */
+      lang?: string;
+    }): Promise<BuyerSessionMint> =>
       this.t.request('POST', '/v1/integration/buyer-sessions', input),
   };
 }
