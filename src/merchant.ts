@@ -74,6 +74,12 @@ export class AlyteMerchant {
     currency: string;
     kind: TierKind;
     availableCount?: number;
+    maxQtyPerPurchase?: number | null;
+    sellable?: boolean;
+    onSaleStart?: string | null;
+    onSaleEnd?: string | null;
+    allowedGeos?: string[] | null;
+    allowedSchemes?: Scheme[] | null;
   }): Promise<{ tier: Tier }> {
     return this.t.request('POST', '/v1/integration/tiers', input);
   }
