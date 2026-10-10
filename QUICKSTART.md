@@ -1,11 +1,12 @@
 # @alytegen/sdk — quickstart
 
-Two clients, two credentials:
+Choose the credential for the runtime:
 
 | Client | Credential | Runs | Does |
 |---|---|---|---|
 | `AlyteMerchant` | API token (console → API keys, `merchant:read`/`merchant:write`) | **your server only** | catalog CRUD, PSP links, payments visibility, buyer-session mint |
 | `AlyteAgent` | agent JWT | your agent runtime | discover → quote → hold → confirm |
+| `@alytegen/sdk/browser` | bounded buyer bearer | your chat page | embedded consent and purchases using the buyer's Alyte agent |
 
 ```bash
 npm install @alytegen/sdk        # zero dependencies, Node ≥18 (built-in fetch)
@@ -37,9 +38,16 @@ When a signed-in user wants an AI agent shopping for them, **your server attests
 them** and you redirect:
 
 ```ts
-const s = await alyte.buyerSessions.mint({ merchantId: merchant.id, email: user.email });
+const s = await alyte.buyerSessions.mint({
+  merchantId: merchant.id, email: user.email,
+  lang: user.locale,          // optional: Alyte's pages open in the language of YOUR site
+});
 res.redirect(ALYTE_URL + s.redeemPath);   // single-use, 15-min TTL
 ```
+
+Embedding in a chat? Follow [BROWSER.md](./BROWSER.md) to exchange the single-use
+token and launch consent without third-party cookies. Directly framing the full
+authorize page is also supported, but its cookie session depends on browser policy.
 
 They land authenticated on the shop's authorize page: pick or bring an agent,
 set a spending cap and scope — all enforced server-side by Alyte on every

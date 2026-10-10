@@ -14,13 +14,17 @@ between the buyer and the merchant's Stripe or Adyen account.
 npm install @alytegen/sdk
 ```
 
-## Three entry points
+## Entry points
 
 | Export | Credential | Runs where | Does |
 |---|---|---|---|
 | `AlyteMerchant` | API token (console → API keys) | your server only | shops, events, tiers, PSP links, buyer-session mint, payments visibility |
 | `AlyteAgent` | agent JWT | your agent runtime | discover → quote → hold → confirm |
 | `createWebhookHandler` / `verifyWebhookSignature` | webhook secret | your server | signed, at-least-once purchase events with typed dispatch |
+| `exchangeBuyerSession` / `createBuyerClient` / `openConsent` from `@alytegen/sdk/browser` | bounded buyer bearer | partner browser/chat | isolated consent, then buy/watch/list/revoke within existing authority |
+
+The browser entry is new in 0.4.0. See [the chat integration](./BROWSER.md) for setup,
+cookie-independent consent, reconnecting and handling uncertain purchases.
 
 ## Merchant: onboard in four calls
 

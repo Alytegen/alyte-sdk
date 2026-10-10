@@ -74,6 +74,12 @@ export class AlyteMerchant {
     currency: string;
     kind: TierKind;
     availableCount?: number;
+    maxQtyPerPurchase?: number | null;
+    sellable?: boolean;
+    onSaleStart?: string | null;
+    onSaleEnd?: string | null;
+    allowedGeos?: string[] | null;
+    allowedSchemes?: Scheme[] | null;
   }): Promise<{ tier: Tier }> {
     return this.t.request('POST', '/v1/integration/tiers', input);
   }
@@ -171,8 +177,22 @@ export class AlyteMerchant {
      * Attest YOUR authenticated user → a single-use redeem link (15-min TTL).
      * Redirect the user to `baseUrl + redeemPath`; the buyer-session cookie and
      * the shop's authorize page take over from there.
+     * Unknown fields are rejected with 400 and error.details.fields.
      */
-    mint: (input: { merchantId: string; email: string }): Promise<BuyerSessionMint> =>
+    mint: (input: {
+      merchantId: string;
+      email: string;
+      /** The tier the buyer chose — opens the authorize page as a checkout for it. */
+      tierId?: string;
+      /** Ticket count hint (1–10), requires tierId; permission and tier limits still govern. */
+      quantity?: number;
+      /** Back-to-shop link, not an automatic redirect. HTTPS (local HTTP allowed);
+       *  restricted to registered embed origins when configured. */
+      returnUrl?: string;
+      /** The buyer's language on YOUR site (BCP-47, e.g. "de" or "de-AT"), so Alyte's
+       *  pages open in the same language. Presentation only. */
+      lang?: string;
+    }): Promise<BuyerSessionMint> =>
       this.t.request('POST', '/v1/integration/buyer-sessions', input),
   };
 }
