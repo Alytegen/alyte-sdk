@@ -136,7 +136,8 @@ export function openConsent(opts: ConsentOptions): Promise<ConsentResult> {
       const data = event.data;
       if (!data || data.type !== 'alyte:consent' || data.merchantId !== opts.merchantId) return;
       if (data.event === 'ready') {
-        if (ready) return;
+        // Language changes reload this same trusted frame. Each fresh document
+        // needs bootstrap; the Alyte page accepts it only once per document.
         ready = true;
         clearTimeout(timer);
         iframe.contentWindow?.postMessage({ type: 'alyte:consent', event: 'bootstrap', bearer: opts.bearer }, base);
