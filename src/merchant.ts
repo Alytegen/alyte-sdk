@@ -177,15 +177,17 @@ export class AlyteMerchant {
      * Attest YOUR authenticated user → a single-use redeem link (15-min TTL).
      * Redirect the user to `baseUrl + redeemPath`; the buyer-session cookie and
      * the shop's authorize page take over from there.
+     * Unknown fields are rejected with 400 and error.details.fields.
      */
     mint: (input: {
       merchantId: string;
       email: string;
       /** The tier the buyer chose — opens the authorize page as a checkout for it. */
       tierId?: string;
-      /** Ticket count hint (1–10); the buyer's permission and tier limits still govern. */
+      /** Ticket count hint (1–10), requires tierId; permission and tier limits still govern. */
       quantity?: number;
-      /** Where "back to the shop" points afterwards (https, under your embed origin). */
+      /** Back-to-shop link, not an automatic redirect. HTTPS (local HTTP allowed);
+       *  restricted to registered embed origins when configured. */
       returnUrl?: string;
       /** The buyer's language on YOUR site (BCP-47, e.g. "de" or "de-AT"), so Alyte's
        *  pages open in the same language. Presentation only. */
