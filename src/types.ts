@@ -185,6 +185,7 @@ export interface MerchantInsights {
     tierTitle: string;
     eventTitle: string;
     queued: number;
+    paused: number;
     fired: number;
     failed: number;
     cancelled: number;

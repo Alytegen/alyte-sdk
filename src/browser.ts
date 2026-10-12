@@ -17,7 +17,7 @@ export interface BuyerAgent {
 }
 export interface BuyerWatch {
   id: string; agentId: string; merchantId: string; tierId: string; quantity: number;
-  status: 'queued' | 'firing' | 'fired' | 'failed' | 'cancelled' | 'expired';
+  status: 'queued' | 'paused' | 'firing' | 'fired' | 'failed' | 'cancelled' | 'expired';
   result?: Record<string, unknown>; expiresAt?: string; createdAt: string; firedAt?: string;
 }
 export type BuyerPurchase =
