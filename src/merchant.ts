@@ -192,6 +192,11 @@ export class AlyteMerchant {
       /** The buyer's language on YOUR site (BCP-47, e.g. "de" or "de-AT"), so Alyte's
        *  pages open in the same language. Presentation only. */
       lang?: string;
+      /** Attest this customer's consent yourself: the session may then create a permission
+       *  without Alyte's emailed code, within your account's limits. Requires a key with the
+       *  `mandates:attest` scope and merchant-attested consent enabled for your account by Alyte
+       *  (a contract is in place). The permission records that YOU attested it. */
+      merchantAttested?: true;
     }): Promise<BuyerSessionMint> =>
       this.t.request('POST', '/v1/integration/buyer-sessions', input),
   };
