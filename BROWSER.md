@@ -9,6 +9,11 @@ buyer's verification code; the iframe does that. A code entered anywhere in your
 UI is a defect in the integration. The step-up endpoints refuse browser calls from
 partner origins; that refusal is a browser boundary, not a substitute for this rule.
 
+Prerequisite: this flow is offered to merchants onboarded under an Alyte contract,
+which carries the rule above. Alyte is invite-onboarded and production keys need
+Alyte's go-live approval; the contract is checked at those steps, not by the
+minting or exchange endpoints themselves.
+
 ## Register and attest
 
 Register your exact HTTPS chat origin in the shop's `embedOrigin` (multiple origins
