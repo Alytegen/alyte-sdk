@@ -4,6 +4,10 @@ Available in SDK 0.4.0 with Alyte's Model 1 browser endpoints. The merchant toke
 stays on your backend. Your chat receives a short-lived bounded buyer bearer;
 creating or widening permission requires email verification inside Alyte's iframe.
 The full verification bearer stays there. No raw agent credential reaches your chat.
+Your pages and your backend must never call the step-up endpoints or handle the
+buyer's verification code; the iframe does that. A code entered anywhere in your own
+UI is a defect in the integration. The step-up endpoints refuse browser calls from
+partner origins; that refusal is a browser boundary, not a substitute for this rule.
 
 ## Register and attest
 
