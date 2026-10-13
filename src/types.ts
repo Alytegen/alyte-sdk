@@ -21,7 +21,7 @@ export interface Merchant {
   /** Public discovery opt-in (default false) — see AlyteMerchant.updateShopDiscovery. */
   discoverable?: boolean;
   imageUrl?: string;
-  /** The ONE partner origin allowed to embed the authorize page (G14). */
+  /** Up to three partner origins (space- or comma-separated) allowed to embed the authorize page and call the buyer API from a browser (G14, L2). */
   embedOrigin?: string;
 }
 
