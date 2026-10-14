@@ -2,7 +2,7 @@
  * Merchant onboarding, end to end: shop → PSP → event → tier → your user shopping.
  *
  *   ALYTE_BASE_URL=https://alyte-sandbox-….run.app \
- *   ALYTE_API_TOKEN=<console-minted, merchant:read+merchant:write> \
+ *   ALYTE_API_TOKEN=<console-minted, the "full" preset: merchant:read+merchant:write+merchant:admin> \
  *   npx tsx merchant-onboard.ts
  */
 import { AlyteMerchant } from '@alytegen/sdk';

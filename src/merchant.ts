@@ -16,7 +16,8 @@ import type {
 
 /**
  * Merchant integration client — drives the `/v1/integration/*` surface with a
- * console-minted API token (`merchant:read` / `merchant:write` scopes).
+ * console-minted API token (`merchant:read` / `merchant:write` scopes; `merchant:admin` for
+ * creating or deleting shops and linking a PSP — the "full" console preset).
  *
  * SERVER-SIDE ONLY: the API token is a secret. Never ship it to a browser.
  *

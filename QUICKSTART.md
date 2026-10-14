@@ -4,7 +4,7 @@ Choose the credential for the runtime:
 
 | Client | Credential | Runs | Does |
 |---|---|---|---|
-| `AlyteMerchant` | API token (console → API keys, `merchant:read`/`merchant:write`) | **your server only** | catalog CRUD, PSP links, payments visibility, buyer-session mint |
+| `AlyteMerchant` | API token (console → API keys, `merchant:read`/`merchant:write`; `merchant:admin` for creating or deleting shops and linking a PSP) | **your server only** | catalog CRUD, PSP links, payments visibility, buyer-session mint |
 | `AlyteAgent` | agent JWT | your agent runtime | discover → quote → hold → confirm |
 | `@alytegen/sdk/browser` | bounded buyer bearer | your chat page | embedded consent and purchases using the buyer's Alyte agent |
 
