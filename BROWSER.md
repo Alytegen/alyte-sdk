@@ -58,7 +58,7 @@ const { agentId, mandateId } = await openConsent({
   baseUrl: ALYTE_URL, merchantId, bearer: connection.bearer,
   container: document.querySelector<HTMLElement>('#alyte-consent')!,
   signal: controller.signal, lang: 'en',
-  theme: { accent: '#006466', font: 'sans', radius: 8, scheme: 'light' },
+  theme: { accent: '#006466', radius: 8, scheme: 'light' },
 });
 ```
 
@@ -79,6 +79,9 @@ Optional `returnUrl` must belong to the chat origin. `onNavigate(url)` decides h
 your chat handles the Back link. The SDK does not navigate the host automatically.
 Themes accept only `accent`, `background`, `surface`, `text`, `font`, `radius`, `scheme`.
 Colours are opaque hex; font is system/sans/serif, radius is 0–16, scheme light/dark.
+Omit `font` to keep Alyte's self-hosted Hanken Grotesk. Explicit `system`, `sans` and
+`serif` select system UI, Arial and Georgia respectively. Secondary text and dividers
+are derived automatically from the palette while preserving readable contrast.
 If contrast fails, all four colours fall back to scheme defaults; they are not
 adjusted. Permission terms, errors and disabled controls keep fixed readable colours.
 Provider card inputs keep their provider styling.
