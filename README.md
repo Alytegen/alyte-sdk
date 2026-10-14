@@ -82,6 +82,27 @@ const out   = await agent.confirm(hold.id,
 No amount is passed at confirm — the charge is the locked quote. A spend-cap refusal means
 the buyer's mandate said no: surface it, don't retry.
 
+## Current API and console capabilities
+
+Published SDK **0.4.0** includes the browser entry point and typed tier-create
+restrictions: `onSaleStart`, `onSaleEnd`, `maxQtyPerPurchase`, `sellable`,
+`allowedGeos` and `allowedSchemes`. Put restrictions in the initial
+`createTier` call so a scheduled tier is never briefly on sale.
+
+The console also offers **attest verified customers only** while Alyte staff have
+enabled contracted consent for your organization. That key holds only
+`mandates:attest`; a read/write key does not include it. The REST API accepts
+`merchantAttested: true` when minting a buyer session, within the contracted
+ceilings. Published 0.4.0 does not include that field in its TypeScript mint input:
+use the [REST example](https://alyte.mintlify.site/guides/console-api-keys), then
+use the existing browser helpers with the returned session.
+
+Emailed-link consent confirmation is **planned and not enabled**. SDK 0.4.0
+continues to use Alyte's current consent view; it has no pending-consent API
+helpers. [Availability and upcoming changes](https://alyte.mintlify.site/guides/consent-confirmation).
+These documentation updates do not publish a new npm version. Alyte's server
+uses Node 22; this SDK still supports Node 18 and later.
+
 ## Learn more
 
 - [QUICKSTART.md](./QUICKSTART.md) — the walkthrough with every call explained.
