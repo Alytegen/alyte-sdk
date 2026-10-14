@@ -2,7 +2,8 @@
 
 Available in SDK 0.4.0 with Alyte's Model 1 browser endpoints. The merchant token
 stays on your backend. Your chat receives a short-lived bounded buyer bearer;
-creating or widening permission requires email verification inside Alyte's iframe.
+ordinary sessions require email verification inside Alyte's iframe to create or
+widen permission.
 The full verification bearer stays there. No raw agent credential reaches your chat.
 Your pages and your backend must never call the step-up endpoints or handle the
 buyer's verification code; the iframe does that. A code entered anywhere in your own
@@ -13,6 +14,22 @@ Prerequisite: this flow is offered to merchants onboarded under an Alyte contrac
 which carries the rule above. Alyte is invite-onboarded and production keys need
 Alyte's go-live approval; the contract is checked at those steps, not by the
 minting or exchange endpoints themselves.
+
+## Availability and contracted attestation
+
+The separately enabled merchant-attested path can grant within staff-set
+ceilings without the emailed code. Mint that session on your backend with an
+attest-only key and `merchantAttested: true`, then exchange it and call
+`openConsent` as below. Published SDK 0.4.0 lacks the TypeScript mint field;
+use the [REST example](https://alyte.mintlify.site/guides/console-api-keys).
+The API key never belongs in the browser. Removing staff enablement or revoking
+the key removes the session's attestation exception.
+
+The proposed emailed-link confirmation flow is not enabled yet. The current
+verification-code flow remains in use. `openConsent`'s signature and result
+are planned to stay compatible when the new Alyte surfaces ship; 0.4.0 has no
+pending-consent client methods.
+[Follow availability](https://alyte.mintlify.site/guides/consent-confirmation).
 
 ## Register and attest
 
@@ -48,7 +65,8 @@ Cookie login endpoints are not available to the parent chat.
 
 The iframe lets the buyer choose an existing usable Alyte agent/permission or
 create one. Selecting an existing permission needs no new email verification.
-Creating authority does. Completion returns IDs only and removes the iframe.
+Creating authority does, except for an enabled merchant-attested session within
+its ceilings. Completion returns IDs only and removes the iframe.
 Cancellation/abort rejects with `AlyteConsentError.code = 'consent_cancelled'`;
 an initial handshake timeout uses `consent_unavailable`. Server errors retain their
 code. `readyTimeoutMs` defaults to 15 seconds and never limits code-entry time.
@@ -86,7 +104,7 @@ Other methods: `me()`, `catalog()`, `agents()`, `instruments()`, `instrumentCaps
 `watches()`, `watch({ agentId, tierId, quantity, expiresInDays? })`,
 `cancelWatch(id)`, `revokeMandate(id)`. Revocation is immediate and server-enforced.
 Every buy/watch still depends on the buyer's current mandate, card evidence and
-live availability. A bounded bearer cannot create or widen spending authority.
+live availability. An ordinary bounded bearer cannot create or widen spending authority.
 
 Your backend still fulfills from verified settlement webhooks, idempotently.
 Browser completion messages are presentation state, not fulfillment evidence.
