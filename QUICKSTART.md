@@ -45,6 +45,10 @@ const s = await alyte.buyerSessions.mint({
 res.redirect(ALYTE_URL + s.redeemPath);   // single-use, 15-min TTL
 ```
 
+Merchants that Alyte staff have enabled under contract can mint with `merchantAttested: true`
+on a key holding only `mandates:attest`: the buyer then creates a permission within your
+shop's ceilings without the emailed code (see the README's hand-off section).
+
 Embedding in a chat? Follow [BROWSER.md](./BROWSER.md) to exchange the single-use
 token and launch consent without third-party cookies. Directly framing the full
 authorize page is also supported, but its cookie session depends on browser policy.

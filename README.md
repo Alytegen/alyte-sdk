@@ -54,6 +54,25 @@ const s = await alyte.buyerSessions.mint({ merchantId: merchant.id, email: user.
 res.redirect(ALYTE_URL + s.redeemPath);            // single-use, 15-minute link
 ```
 
+Two kinds of session, decided by how you mint:
+
+- **Ordinary** (above): the buyer can act inside permission they already granted. Creating or
+  widening permission asks them to confirm a 6-digit code Alyte emails them, typed into Alyte's
+  own screen — never into yours.
+- **Merchant-attested** — for merchants Alyte staff have enabled under contract — lets the buyer
+  create a permission **without the code**, within the ceilings staff set for your shop, because
+  you vouch for your signed-in, email-verified customer. It needs a key holding only
+  `mandates:attest` (the console offers **attest verified customers only** once enabled):
+
+  ```ts
+  const attesting = new AlyteMerchant({ baseUrl: ALYTE_URL, token: process.env.ALYTE_ATTEST_KEY! });
+  const s = await attesting.buyerSessions.mint({ merchantId: merchant.id, email: user.email, merchantAttested: true });
+  ```
+
+  The buyer sees "Set up by {your shop}" on that agent and can revoke it. A grant outside the
+  ceilings answers `403 merchant_consent_ceiling_exceeded` and Alyte's screen falls back to the
+  buyer's own code; without the enablement, the mint answers `403 merchant_consent_not_enabled`.
+
 ## Receive purchases
 
 ```ts
@@ -84,24 +103,16 @@ the buyer's mandate said no: surface it, don't retry.
 
 ## Current API and console capabilities
 
-Published SDK **0.4.0** includes the browser entry point and typed tier-create
-restrictions: `onSaleStart`, `onSaleEnd`, `maxQtyPerPurchase`, `sellable`,
-`allowedGeos` and `allowedSchemes`. Put restrictions in the initial
-`createTier` call so a scheduled tier is never briefly on sale.
+SDK **0.5.0** types the merchant-attested mint (`merchantAttested: true`), alongside the browser
+entry point and the typed tier-create restrictions (`onSaleStart`, `onSaleEnd`, `maxQtyPerPurchase`,
+`sellable`, `allowedGeos`, `allowedSchemes` — put them in the initial `createTier` call so a
+scheduled tier is never briefly on sale).
 
-The console also offers **attest verified customers only** while Alyte staff have
-enabled contracted consent for your organization. That key holds only
-`mandates:attest`; a read/write key does not include it. The REST API accepts
-`merchantAttested: true` when minting a buyer session, within the contracted
-ceilings. Published 0.4.0 does not include that field in its TypeScript mint input:
-use the [REST example](https://alyte.mintlify.site/guides/console-api-keys), then
-use the existing browser helpers with the returned session.
-
-Emailed-link consent confirmation is **planned and not enabled**. SDK 0.4.0
-continues to use Alyte's current consent view; it has no pending-consent API
-helpers. [Availability and upcoming changes](https://alyte.mintlify.site/guides/consent-confirmation).
-These documentation updates do not publish a new npm version. Alyte's server
-uses Node 22; this SDK still supports Node 18 and later.
+The console offers **attest verified customers only** while Alyte staff have enabled contracted
+consent for your organization; that key holds only `mandates:attest`, and a read/write key does
+not include it. Permission creation for everyone else goes through Alyte's consent screen with the
+emailed code — there is no API for your code to create or widen a buyer's spending authority, by
+design. Alyte's server runs Node 22; this SDK supports Node 18 and later.
 
 ## Learn more
 

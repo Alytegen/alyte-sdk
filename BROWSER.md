@@ -1,10 +1,12 @@
 # Buyer purchases inside your chat
 
-Available in SDK 0.4.0 with Alyte's Model 1 browser endpoints. The merchant token
-stays on your backend. Your chat receives a short-lived bounded buyer bearer;
-ordinary sessions require email verification inside Alyte's iframe to create or
-widen permission.
-The full verification bearer stays there. No raw agent credential reaches your chat.
+Available since SDK 0.4.0 with Alyte's Model 1 browser endpoints (0.5.0 types the attested
+mint). The merchant token stays on your backend. Your chat receives a short-lived bounded
+buyer bearer. How a permission gets created depends on the session you minted:
+**merchant-attested** (enabled merchants, within staff-set ceilings) — Alyte's iframe creates
+it on your attestation, no code; **ordinary** — the iframe asks the buyer to confirm a code
+Alyte emails them. Either way the verification happens inside Alyte's iframe, and the full
+verification bearer stays there. No raw agent credential reaches your chat.
 Your pages and your backend must never call the step-up endpoints or handle the
 buyer's verification code; the iframe does that. A code entered anywhere in your own
 UI is a defect in the integration. The step-up endpoints refuse browser calls from
@@ -37,8 +39,10 @@ Register your exact HTTPS chat origin in the shop's `embedOrigin` (multiple orig
 are comma-separated). This controls both framing and buyer CORS. New registrations
 can take up to 30 seconds to reach preflight caches. Local HTTP development is supported.
 On your backend, authenticate your own user, derive their email from that session,
-then call `merchant.buyerSessions.mint({ merchantId, email })`. Return only the `token`
-query value extracted from `new URL(session.redeemPath, ALYTE_URL)` to that user's
+then call `merchant.buyerSessions.mint({ merchantId, email })` — or, on a `mandates:attest`
+key for an enabled merchant, `mint({ merchantId, email, merchantAttested: true })` so the
+buyer can create a permission within your ceilings without the emailed code. Return only the
+`token` query value extracted from `new URL(session.redeemPath, ALYTE_URL)` to that user's
 browser. Do not navigate the redeem link too: either consumer uses the token once.
 The mint endpoint must not accept an arbitrary browser-supplied email as identity.
 
