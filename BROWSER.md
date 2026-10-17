@@ -22,16 +22,15 @@ minting or exchange endpoints themselves.
 The separately enabled merchant-attested path can grant within staff-set
 ceilings without the emailed code. Mint that session on your backend with an
 attest-only key and `merchantAttested: true`, then exchange it and call
-`openConsent` as below. Published SDK 0.4.0 lacks the TypeScript mint field;
-use the [REST example](https://alyte.mintlify.site/guides/console-api-keys).
+`openConsent` as below. SDK 0.5.0 types the mint field
+(`buyerSessions.mint({ merchantId, email, merchantAttested: true })`); the
+[REST example](https://alyte.mintlify.site/guides/console-api-keys) shows the same call without the SDK.
 The API key never belongs in the browser. Removing staff enablement or revoking
 the key removes the session's attestation exception.
 
-The proposed emailed-link confirmation flow is not enabled yet. The current
-verification-code flow remains in use. `openConsent`'s signature and result
-are planned to stay compatible when the new Alyte surfaces ship; 0.4.0 has no
-pending-consent client methods.
-[Follow availability](https://alyte.mintlify.site/guides/consent-confirmation).
+The emailed-link confirmation flow proposed earlier is withdrawn and will not ship.
+Ordinary sessions confirm the emailed verification code inside Alyte's iframe, and
+the SDK has no pending-consent client methods.
 
 ## Register and attest
 

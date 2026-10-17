@@ -23,7 +23,7 @@ npm install @alytegen/sdk
 | `createWebhookHandler` / `verifyWebhookSignature` | webhook secret | your server | signed, at-least-once purchase events with typed dispatch |
 | `exchangeBuyerSession` / `createBuyerClient` / `openConsent` from `@alytegen/sdk/browser` | bounded buyer bearer | partner browser/chat | isolated consent, then buy/watch/list/revoke within existing authority |
 
-The browser entry is new in 0.4.0. See [the chat integration](./BROWSER.md) for setup,
+The browser entry arrived in 0.4.0; 0.5.0 is the current release. See [the chat integration](./BROWSER.md) for setup,
 cookie-independent consent, reconnecting and handling uncertain purchases.
 
 ## Merchant: onboard in four calls
