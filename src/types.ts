@@ -6,6 +6,7 @@
 export type Scheme = 'visa' | 'mastercard' | 'amex';
 export type TierKind = 'general' | 'seated';
 export type FeeBearer = 'buyer' | 'merchant';
+export type * from './inventoryTypes.js';
 
 export interface Merchant {
   id: string;
@@ -42,6 +43,8 @@ export interface Tier {
   currency: string;
   kind: TierKind;
   availableCount?: number;
+  /** When present, availability comes from this shared pool. Restock the pool. */
+  poolId?: string;
   // Restrictions — all enforced server-side; undefined = unrestricted.
   maxQtyPerPurchase?: number;
   sellable?: boolean;

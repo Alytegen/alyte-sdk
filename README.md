@@ -43,6 +43,55 @@ const { event } = await alyte.createEvent({ merchantId: merchant.id, title: 'War
 const { tier }  = await alyte.createTier({ eventId: event.id, title: 'GA', priceMinor: 4900, currency: 'EUR', kind: 'general', availableCount: 500 });
 ```
 
+## Inventory management (unreleased)
+
+These methods are in the SDK source for the next release; they are not in npm 0.5.0.
+The new location and inventory-observation routes also require the matching server update.
+
+The merchant can operate the venue and own its inventory. One API credential with
+`merchant:read` and `merchant:write` manages both. A location is optional place and
+time-zone metadata under the shop, not a separate account.
+
+```ts
+const { location } = await alyte.createLocation(merchant.id, {
+  name: 'Our theatre', timeZone: 'Europe/London',
+});
+const { event: show } = await alyte.createEvent({
+  merchantId: merchant.id, title: 'Evening show', startsAt: '2027-05-01T20:00:00+01:00',
+  location: { id: location.id, expectedRevision: location.revision }, // optional
+});
+const { pool } = await alyte.createPool({
+  merchantId: merchant.id, eventId: show.id, title: 'General admission', capacity: 100,
+});
+await alyte.createTier({
+  eventId: show.id, title: 'Adult', kind: 'general', priceMinor: 2500, currency: 'EUR', poolId: pool.id,
+});
+await alyte.createTier({
+  eventId: show.id, title: 'Child', kind: 'general', priceMinor: 1500, currency: 'EUR', poolId: pool.id,
+});
+const { catalog: observation } = await alyte.inventoryCatalog(merchant.id);
+// Both prices draw from one counter. The observation is not a reservation or quote.
+```
+
+Use `listPools` and `updatePool` to inspect or edit shared capacity. `availableCount`
+sets remaining stock; it is not an increment. Omit it when only renaming a pool.
+Pooled tiers cannot be restocked individually, and the server refuses capacity below
+outstanding holds. `updateTier` still controls price, sale windows and sellability.
+
+`listLocations`, `updateLocation`, `getSlot` and `setSlotLocation` manage optional
+place metadata. Location changes require the revision you read. Existing occurrences
+keep their pinned location version until explicitly rebound. Rebinding or clearing
+a location does not reschedule the event. Pass `expectedOccurrenceRevision` to
+`updateTier` when a sale-window edit depends on the slot's location; stale edits
+return `commerce_schedule_conflict` and should be refreshed before retrying.
+
+`inventoryCatalog` reports current base prices and stock, with no private buyer or
+agent allow-lists. Its disabled generic transaction capabilities describe that
+observation; they do not disable the merchant's stock-management methods. It fails
+with `catalog_too_large` if any source relation exceeds 2,000 rows, including private
+eligibility rows. `listLocations` has a separate 2,000-row bound. Neither returns a
+truncated result.
+
 ## Hand a signed-in customer to their agent
 
 Your users already have accounts with you. Your server attests one of them and redirects;

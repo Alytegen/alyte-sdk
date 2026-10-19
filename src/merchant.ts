@@ -12,6 +12,11 @@ import type {
   PaymentRow,
   WebhookEndpoint,
   MerchantInsights,
+  InventoryCatalog,
+  InventoryLocation,
+  InventoryLocationBinding,
+  InventoryOccurrence,
+  InventoryPool,
 } from './types.js';
 
 /**
@@ -63,7 +68,8 @@ export class AlyteMerchant {
     return this.t.request('PATCH', `/v1/integration/merchants/${encodeURIComponent(merchantId)}`, input);
   }
 
-  createEvent(input: { merchantId: string; title: string; startsAt: string }): Promise<{ event: EventItem }> {
+  /** Optional location is metadata owned by this shop; the merchant may operate it. */
+  createEvent(input: { merchantId: string; title: string; startsAt: string; location?: { id: string; expectedRevision: number } }): Promise<{ event: EventItem }> {
     return this.t.request('POST', '/v1/integration/events', input);
   }
 
@@ -75,6 +81,8 @@ export class AlyteMerchant {
     currency: string;
     kind: TierKind;
     availableCount?: number;
+    /** Shared counter; omit availableCount when attaching a pool. */
+    poolId?: string | null;
     maxQtyPerPurchase?: number | null;
     sellable?: boolean;
     onSaleStart?: string | null;
@@ -90,6 +98,9 @@ export class AlyteMerchant {
     patch: {
       priceMinor?: number;
       availableCount?: number;
+      poolId?: string | null;
+      /** Guard sale-window edits against a concurrent location-binding change. */
+      expectedOccurrenceRevision?: number;
       maxQtyPerPurchase?: number | null;
       sellable?: boolean;
       onSaleStart?: string | null;
@@ -107,6 +118,48 @@ export class AlyteMerchant {
 
   deleteEvent(eventId: string): Promise<{ ok: boolean }> {
     return this.t.request('DELETE', `/v1/integration/events/${encodeURIComponent(eventId)}`);
+  }
+
+  /** Observed stock and base prices for one shop; not a reserved or quoted offer.
+   * Read scope does not grant writes. A read/write key can also manage this inventory.
+   * Fails with catalog_too_large if any source relation exceeds 2,000 rows. */
+  inventoryCatalog(merchantId: string): Promise<{ catalog: InventoryCatalog }> {
+    return this.t.request('GET', `/v1/integration/merchants/${encodeURIComponent(merchantId)}/inventory`);
+  }
+
+  listLocations(merchantId: string): Promise<{ locations: InventoryLocation[] }> {
+    return this.t.request('GET', `/v1/integration/merchants/${encodeURIComponent(merchantId)}/locations`);
+  }
+
+  createLocation(merchantId: string, input: { name: string; timeZone: string }): Promise<{ location: InventoryLocation }> {
+    return this.t.request('POST', `/v1/integration/merchants/${encodeURIComponent(merchantId)}/locations`, input);
+  }
+
+  /** Existing occurrences keep their pinned version until explicitly rebound. */
+  updateLocation(merchantId: string, locationId: string, input: { name: string; timeZone: string; expectedRevision: number }): Promise<{ location: InventoryLocation }> {
+    return this.t.request('PATCH', `/v1/integration/merchants/${encodeURIComponent(merchantId)}/locations/${encodeURIComponent(locationId)}`, input);
+  }
+
+  getSlot(merchantId: string, slotId: string): Promise<{ slot: InventoryOccurrence }> {
+    return this.t.request('GET', `/v1/integration/merchants/${encodeURIComponent(merchantId)}/slots/${encodeURIComponent(slotId)}`);
+  }
+
+  /** Metadata only; does not change the occurrence's start instant or inventory. */
+  setSlotLocation(merchantId: string, slotId: string, input: InventoryLocationBinding): Promise<{ slot: InventoryOccurrence }> {
+    return this.t.request('PUT', `/v1/integration/merchants/${encodeURIComponent(merchantId)}/slots/${encodeURIComponent(slotId)}/location`, input);
+  }
+
+  createPool(input: { merchantId: string; eventId?: string | null; title: string; capacity: number }): Promise<{ pool: InventoryPool }> {
+    return this.t.request('POST', '/v1/integration/pools', input);
+  }
+
+  listPools(merchantId: string): Promise<{ pools: InventoryPool[] }> {
+    return this.t.request('GET', `/v1/integration/pools?merchantId=${encodeURIComponent(merchantId)}`);
+  }
+
+  /** availableCount sets remaining units, not an increment; capacity must cover holds. */
+  updatePool(poolId: string, patch: { title?: string; capacity?: number; availableCount?: number }): Promise<{ pool: InventoryPool }> {
+    return this.t.request('PATCH', `/v1/integration/pools/${encodeURIComponent(poolId)}`, patch);
   }
 
   listPsps(merchantId: string): Promise<{ psps: MerchantPspLink[] }> {
