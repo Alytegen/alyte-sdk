@@ -1,6 +1,6 @@
 # Buyer purchases inside your chat
 
-Available since SDK 0.4.0 with Alyte's Model 1 browser endpoints (0.5.0 types the attested
+Available since SDK 0.4.0 with Alyte's Model 1 browser endpoints (0.5.0 and later type the attested
 mint). The merchant token stays on your backend. Your chat receives a short-lived bounded
 buyer bearer. How a permission gets created depends on the session you minted:
 **merchant-attested** (enabled merchants, within staff-set ceilings) — Alyte's iframe creates
@@ -22,7 +22,7 @@ minting or exchange endpoints themselves.
 The separately enabled merchant-attested path can grant within staff-set
 ceilings without the emailed code. Mint that session on your backend with an
 attest-only key and `merchantAttested: true`, then exchange it and call
-`openConsent` as below. SDK 0.5.0 types the mint field
+`openConsent` as below. SDK 0.5.0 and later type the mint field
 (`buyerSessions.mint({ merchantId, email, merchantAttested: true })`); the
 [REST example](https://alyte.mintlify.site/guides/console-api-keys) shows the same call without the SDK.
 The API key never belongs in the browser. Removing staff enablement or revoking

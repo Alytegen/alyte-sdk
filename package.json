@@ -1,6 +1,6 @@
 {
   "name": "@alytegen/sdk",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Alyte client SDK \u2014 merchant integration (catalog, PSP links, buyer sessions, payments visibility) and the agent buy path (discover \u2192 quote \u2192 hold \u2192 confirm).",
   "type": "module",
   "main": "dist/index.js",

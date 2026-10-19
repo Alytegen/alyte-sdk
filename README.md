@@ -23,7 +23,7 @@ npm install @alytegen/sdk
 | `createWebhookHandler` / `verifyWebhookSignature` | webhook secret | your server | signed, at-least-once purchase events with typed dispatch |
 | `exchangeBuyerSession` / `createBuyerClient` / `openConsent` from `@alytegen/sdk/browser` | bounded buyer bearer | partner browser/chat | isolated consent, then buy/watch/list/revoke within existing authority |
 
-The browser entry arrived in 0.4.0; 0.5.0 is the current release. See [the chat integration](./BROWSER.md) for setup,
+The browser entry arrived in 0.4.0; 0.6.0 is the current release. See [the chat integration](./BROWSER.md) for setup,
 cookie-independent consent, reconnecting and handling uncertain purchases.
 
 ## Merchant: onboard in four calls
@@ -43,10 +43,9 @@ const { event } = await alyte.createEvent({ merchantId: merchant.id, title: 'War
 const { tier }  = await alyte.createTier({ eventId: event.id, title: 'GA', priceMinor: 4900, currency: 'EUR', kind: 'general', availableCount: 500 });
 ```
 
-## Inventory management (unreleased)
+## Inventory management
 
-These methods are in the SDK source for the next release; they are not in npm 0.5.0.
-The new location and inventory-observation routes also require the matching server update.
+Available since SDK 0.6.0.
 
 The merchant can operate the venue and own its inventory. One API credential with
 `merchant:read` and `merchant:write` manages both. A location is optional place and
@@ -152,7 +151,10 @@ the buyer's mandate said no: surface it, don't retry.
 
 ## Current API and console capabilities
 
-SDK **0.5.0** types the merchant-attested mint (`merchantAttested: true`), alongside the browser
+SDK **0.6.0** adds inventory management: shared pools (`createPool`, `listPools`, `updatePool`),
+optional venue locations with pinned versions (`createLocation`, `listLocations`, `updateLocation`,
+`getSlot`, `setSlotLocation`, `createEvent({ location })`) and a read-only `inventoryCatalog`
+observation. **0.5.0** typed the merchant-attested mint (`merchantAttested: true`), alongside the browser
 entry point and the typed tier-create restrictions (`onSaleStart`, `onSaleEnd`, `maxQtyPerPurchase`,
 `sellable`, `allowedGeos`, `allowedSchemes` — put them in the initial `createTier` call so a
 scheduled tier is never briefly on sale).
