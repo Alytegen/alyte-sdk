@@ -31,6 +31,14 @@ const { tier } = await alyte.createTier({ eventId: event.id, title: 'GA', priceM
 
 Money is **integer minor units** everywhere (`4900` = €49.00). Floats are refused.
 
+The development SDK also includes `alyte.accessRules` and `alyte.memberships` for
+merchant-controlled early access: save a draft, preview, schedule or cancel, and attest or
+revoke membership. These methods are **unreleased, not in npm 0.6.0**, and require the
+matching server. See [the access-rule workflow](./README.md#access-rules-and-membership-unreleased)
+for request identities, explicit-offset windows and revision checks.
+Membership uses the `buyerId` returned by `buyerSessions.mint`; retain its mapping to
+your own customer ID rather than passing your internal customer ID to `memberships.upsert`.
+
 ## Plugging in YOUR auth + user database (required for buyer flows)
 
 Your customers already have accounts with you — Alyte does not replace that.

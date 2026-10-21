@@ -91,6 +91,69 @@ with `catalog_too_large` if any source relation exceeds 2,000 rows, including pr
 eligibility rows. `listLocations` has a separate 2,000-row bound. Neither returns a
 truncated result.
 
+## Access rules and membership (unreleased)
+
+These methods are on the development branch and require the matching server; they are
+**not included in npm 0.6.0**. Use a backend credential with `merchant:read` and
+`merchant:write`. The console exposes the same flow to account owners.
+
+An access rule grants an early window before a tier's general-sale opening. Create a
+draft, review its current impact, then schedule it:
+
+```ts
+const { program } = await alyte.memberships.createProgram(merchant.id, {
+  requestId: crypto.randomUUID(), name: 'Members', levels: ['Gold', 'Platinum'],
+});
+const { rule } = await alyte.accessRules.createDraft(merchant.id, {
+  requestId: crypto.randomUUID(), offerId: tier.id, name: 'Member presale',
+  audience: { kind: 'membership', programId: program.id, levels: ['Gold', 'Platinum'] },
+  opensAt: '2027-05-01T09:00:00+01:00',
+  closesAt: '2027-05-01T10:00:00+01:00', // must end by the tier's general-sale opening
+});
+const preview = await alyte.accessRules.preview(merchant.id, rule.id);
+// Show preview.impact, preview.timeZone and the window to the operator for review.
+const publication = {
+  requestId: crypto.randomUUID(), expectedRevision: rule.revision, previewId: preview.id,
+};
+// Persist publication before dispatch; reuse exactly this input after an uncertain response.
+const scheduled = await alyte.accessRules.schedule(merchant.id, rule.id, publication);
+```
+
+Persist **each** mutation's request UUID and input before dispatch. Exact replays are safe;
+changed input requires a new UUID. `access_conflict` means refresh and review again.
+Drafts remain inactive. To cancel, call `preview(shopId, ruleId, 'cancel')`, then
+`cancel` with that preview ID, the current rule revision and a new request UUID.
+Published rules cannot be edited.
+
+The merchant supplies verified membership for the **Alyte buyer ID** returned as
+`buyerId` by `buyerSessions.mint`. Store a mapping from your authenticated customer's
+internal ID to this returned value, scoped to the Alyte account. Passing your own customer
+ID directly will not match the buyer's Alyte agent. Obtain the identity during your existing
+signed-in hand-off; never derive or guess it from an email address.
+
+```ts
+const session = await alyte.buyerSessions.mint({
+  merchantId: merchant.id, email: user.email,
+});
+const evidence = {
+  requestId: crypto.randomUUID(), sourceRevision: 1, level: 'Gold',
+  validFrom: '2027-01-01T00:00:00Z', validUntil: '2028-01-01T00:00:00Z',
+  evidenceRef: 'membership-system:record-123', revoked: false,
+};
+await alyte.memberships.upsert(merchant.id, program.id, session.buyerId, evidence);
+// Revoke using a new requestId, a strictly greater sourceRevision, and revoked: true.
+```
+
+Levels are explicit, with no implied hierarchy. Membership does not grant payment permission.
+Other audiences are `{ kind: 'everyone' }` and
+`{ kind: 'scheme', schemes: ['amex'] }`; card eligibility uses the actual saved instrument.
+Issuer claims and free-text loyalty claims are not accepted. All times require explicit offsets.
+Impact counts are observations of access, not stock forecasts or guaranteed queue positions.
+
+Deleting an offer archives its rules in the read API. `accessRules.list` omits them, so
+they do not consume the active list's limit. `accessRules.get` still returns their historical
+definition and revision with `status: 'archived'`; archived rules cannot be edited or published.
+
 ## Hand a signed-in customer to their agent
 
 Your users already have accounts with you. Your server attests one of them and redirects;

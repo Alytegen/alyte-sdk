@@ -8,3 +8,4 @@ export {
   type PurchaseHandlers, type OnPurchaseOptions, type WebhookResult,
 } from './onPurchase.js';
 export type * from './types.js';
+export type {AccessAudience,AccessDraftInput,AccessRule,AccessPreview,AccessCommitInput,MembershipProgram,MembershipEvidence} from './access.js';

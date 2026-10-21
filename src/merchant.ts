@@ -1,4 +1,5 @@
 import { Transport, type ClientOptions } from './http.js';
+import { MerchantAccessRules,MerchantMemberships } from './access.js';
 import type {
   BuyerSessionMint,
   CatalogMerchant,
@@ -33,8 +34,12 @@ import type {
  */
 export class AlyteMerchant {
   private readonly t: Transport;
+  readonly accessRules:MerchantAccessRules;
+  readonly memberships:MerchantMemberships;
   constructor(opts: ClientOptions) {
     this.t = new Transport(opts);
+    this.accessRules=new MerchantAccessRules(this.t);
+    this.memberships=new MerchantMemberships(this.t);
   }
 
   /** Your tenant's full catalog: shops → events → tiers (with restriction fields). */
