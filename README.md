@@ -23,7 +23,7 @@ npm install @alytegen/sdk
 | `createWebhookHandler` / `verifyWebhookSignature` | webhook secret | your server | signed, at-least-once purchase events with typed dispatch |
 | `exchangeBuyerSession` / `createBuyerClient` / `openConsent` from `@alytegen/sdk/browser` | bounded buyer bearer | partner browser/chat | isolated consent, then buy/watch/list/revoke within existing authority |
 
-The browser entry arrived in 0.4.0; 0.6.0 is the current release. See [the chat integration](./BROWSER.md) for setup,
+The browser entry arrived in 0.4.0; 0.7.0 is the current release. See [the chat integration](./BROWSER.md) for setup,
 cookie-independent consent, reconnecting and handling uncertain purchases.
 
 ## Merchant: onboard in four calls
@@ -91,10 +91,10 @@ with `catalog_too_large` if any source relation exceeds 2,000 rows, including pr
 eligibility rows. `listLocations` has a separate 2,000-row bound. Neither returns a
 truncated result.
 
-## Access rules and membership (unreleased)
+## Access rules and membership
 
-These methods are on the development branch and require the matching server; they are
-**not included in npm 0.6.0**. Use a backend credential with `merchant:read` and
+Available since SDK 0.7.0; requires a server at or after sandbox revision
+`alyte-sandbox-00133-v77`. Use a backend credential with `merchant:read` and
 `merchant:write`. The console exposes the same flow to account owners.
 
 An access rule grants an early window before a tier's general-sale opening. Create a
@@ -214,7 +214,9 @@ the buyer's mandate said no: surface it, don't retry.
 
 ## Current API and console capabilities
 
-SDK **0.6.0** adds inventory management: shared pools (`createPool`, `listPools`, `updatePool`),
+SDK **0.7.0** adds merchant-controlled early access: `accessRules` (`list`, `get`,
+`createDraft`, `updateDraft`, `preview`, `schedule`, `cancel`) and `memberships`
+(`createProgram`, `upsert`). **0.6.0** added inventory management: shared pools (`createPool`, `listPools`, `updatePool`),
 optional venue locations with pinned versions (`createLocation`, `listLocations`, `updateLocation`,
 `getSlot`, `setSlotLocation`, `createEvent({ location })`) and a read-only `inventoryCatalog`
 observation. **0.5.0** typed the merchant-attested mint (`merchantAttested: true`), alongside the browser
