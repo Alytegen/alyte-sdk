@@ -71,6 +71,8 @@ export interface DiscoveredTier extends Tier {
 }
 
 export interface DiscoveredEvent extends EventItem {
+  /** Pinned venue display metadata. Null = unknown; absent on older servers. */
+  location?: { name: string; timeZone: string } | null;
   tiers: DiscoveredTier[];
 }
 
