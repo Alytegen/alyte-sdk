@@ -19,6 +19,43 @@ export interface BuyerWatch {
   id: string; agentId: string; merchantId: string; tierId: string; quantity: number;
   status: 'queued' | 'paused' | 'firing' | 'fired' | 'failed' | 'cancelled' | 'expired';
   result?: Record<string, unknown>; expiresAt?: string; createdAt: string; firedAt?: string;
+  /** Absent on legacy watches and older servers: treat as availability. */
+  conditionSpec?: WatchCondition;
+  /** Server-computed place in line. Absent on older servers = unavailable, never position zero. */
+  queue?: WatchQueueSnapshot;
+}
+export type WatchCondition =
+  | { kind: 'available' }
+  | { kind: 'price_at_or_below'; maxChargeMinor: number; currency: 'EUR' | 'GBP' | 'USD' };
+/** Unknown future values must render as a generic waiting state. */
+export type WatchWaitingReason = 'access_window' | 'price_target' | 'stock' | 'whole_party' | (string & {});
+export type QueuePlace =
+  | { kind: 'assigned' | 'provisional'; position: number; requestsAhead: number }
+  | { kind: 'unassigned'; reason: 'condition_not_met' | 'paused' | (string & {}) }
+  | { kind: 'not_waiting'; reason: 'processing' | 'reconciling' | 'terminal' | (string & {}) }
+  | { kind: 'unavailable' };
+export interface WatchQueueSnapshot {
+  schemaVersion: 1;
+  /** Decimal monotonic sequence — compare with BigInt, never Number. */
+  revision: string;
+  observedAt: string;
+  refreshAfterMs: number;
+  /** `phaseId` 'general' or 'rule:<id>' (an access window, labelled by the merchant); a place counts within its phase. */
+  queue: { id: string; label: string; phaseId?: string; phaseLabel?: string };
+  policyVersion: string;
+  place: QueuePlace;
+  waitingReason?: WatchWaitingReason;
+  nextEligibleAt?: string;
+  observedChargeMinor?: number;
+}
+export interface WatchInstruction {
+  /** Save the whole instruction (not the bearer) BEFORE sending; reuse this UUID after an uncertain response. */
+  requestId: string;
+  agentId: string;
+  request: { kind: 'ticketing'; tierId: string; quantity: number };
+  condition: WatchCondition;
+  /** ISO-8601 with an explicit offset, e.g. 2026-11-01T12:00:00Z. */
+  expiresAt: string;
 }
 export type BuyerPurchase =
   | { status: 'settled' | 'pending'; intentId: string; chargeMinor: number; currency: string; paymentState?: string; agentName?: string }
@@ -35,8 +72,8 @@ function baseOrigin(value: string): string {
 }
 
 /** HTTP errors retain the server taxonomy; no request is automatically retried. */
-async function request<T>(fetcher: typeof globalThis.fetch, base: string, path: string, method: string, bearer?: string, body?: unknown): Promise<T> {
-  const res = await fetcher(base + path, { method, credentials: 'omit', redirect: 'error', cache: 'no-store',
+async function request<T>(fetcher: typeof globalThis.fetch, base: string, path: string, method: string, bearer?: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  const res = await fetcher(base + path, { method, credentials: 'omit', redirect: 'error', cache: 'no-store', signal,
     headers: { ...(bearer ? { authorization: `Bearer ${bearer}` } : {}), ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -58,7 +95,7 @@ export function exchangeBuyerSession(opts: { baseUrl: string; token: string; fet
 export function createBuyerClient(opts: BuyerClientOptions) {
   const base = baseOrigin(opts.baseUrl), fetcher = opts.fetch ?? globalThis.fetch;
   if (typeof opts.bearer !== 'string' || !opts.bearer) throw new TypeError('bearer is required');
-  const call = <T>(method: string, path: string, body?: unknown) => request<T>(fetcher, base, '/v1/buyer' + path, method, opts.bearer, body);
+  const call = <T>(method: string, path: string, body?: unknown, signal?: AbortSignal) => request<T>(fetcher, base, '/v1/buyer' + path, method, opts.bearer, body, signal);
   return {
     me: () => call<BuyerIdentity>('GET', '/me'),
     catalog: () => call<{ events: DiscoveredEvent[] }>('GET', '/catalog'),
@@ -74,10 +111,84 @@ export function createBuyerClient(opts: BuyerClientOptions) {
     payment: (intentId: string) => call<BuyerReceipt>('GET', `/payments/${encodeURIComponent(intentId)}`),
     watch: (input: { agentId: string; tierId: string; quantity: number; expiresInDays?: number }) => call<{ watch: BuyerWatch }>('POST', '/watches', input),
     cancelWatch: (watchId: string) => call<{ watch: BuyerWatch }>('DELETE', `/watches/${encodeURIComponent(watchId)}`),
+    /** What this deployment enforces. Discovery only — the server still refuses anything unsupported. */
+    watchCapabilities: () => call<{ schemaVersion: 1; requestKinds: string[]; conditions: string[]; queuePolicy: string }>('GET', '/watch-capabilities'),
+    /**
+     * Conditional watch on its own strict route. Never falls back to `watch()` (which would drop the
+     * condition) and never retries by itself: after an uncertain response, resend the SAME instruction.
+     */
+    createWatch: (input: WatchInstruction) => {
+      if (typeof input.requestId !== 'string' || !UUID.test(input.requestId)) throw new TypeError('A saved UUID requestId is required');
+      if (input.condition?.kind === 'price_at_or_below' && !Number.isSafeInteger(input.condition.maxChargeMinor)) throw new TypeError('maxChargeMinor must be an integer in minor units');
+      return call<{ watch: BuyerWatch; replayed: boolean }>('POST', '/watch-requests', input);
+    },
+    getWatch: (watchId: string, init?: { signal?: AbortSignal }) => call<{ watch: BuyerWatch }>('GET', `/watches/${encodeURIComponent(watchId)}`, undefined, init?.signal),
     revokeMandate: (mandateId: string) => call<{ ok: true; id: string; status: 'revoked' }>('DELETE', `/mandates/${encodeURIComponent(mandateId)}`),
   };
 }
 export type BuyerClient = ReturnType<typeof createBuyerClient>;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export interface ObserveWatchOptions {
+  client: Pick<BuyerClient, 'getWatch'>;
+  watchId: string;
+  signal: AbortSignal;
+  onUpdate: (watch: BuyerWatch) => void;
+  /** A read failed; `last` is the last snapshot, now stale. Polling continues with backoff unless `stopped`. */
+  onError?: (error: unknown, last: BuyerWatch | undefined, stopped: boolean) => void;
+}
+
+const MIN_POLL_MS = 2000, MAX_POLL_MS = 60_000;
+
+/**
+ * Read-only polling of one watch: one request in flight, server-directed interval (bounded),
+ * bounded backoff on read failures, older revisions discarded, paused while the page is hidden.
+ * Stops on a terminal state, an authorization/not-found refusal, or abort. It never creates,
+ * cancels, pays or consents.
+ */
+export function observeWatch(opts: ObserveWatchOptions): void {
+  let last: BuyerWatch | undefined, failures = 0, timer: ReturnType<typeof setTimeout> | undefined, inFlight = false;
+  const doc = (globalThis as { document?: Document }).document;
+  const stop = () => { if (timer) clearTimeout(timer); doc?.removeEventListener('visibilitychange', onVisible); };
+  const schedule = (ms: number) => { if (timer) clearTimeout(timer); if (!opts.signal.aborted) timer = setTimeout(tick, Math.min(MAX_POLL_MS, Math.max(MIN_POLL_MS, ms))); };
+  const onVisible = () => {
+    if (doc?.visibilityState !== 'visible' || opts.signal.aborted || inFlight) return; // one request in flight, ever
+    if (timer) clearTimeout(timer);
+    timer = undefined;
+    void tick();
+  };
+  async function tick(): Promise<void> {
+    timer = undefined;
+    if (opts.signal.aborted) return stop();
+    if (inFlight) return;
+    if (doc?.visibilityState === 'hidden') return; // resumes on visibilitychange
+    inFlight = true;
+    try {
+      const { watch } = await opts.client.getWatch(opts.watchId, { signal: opts.signal });
+      failures = 0;
+      const older = last?.queue && watch.queue && BigInt(watch.queue.revision) < BigInt(last.queue.revision);
+      if (!older) { last = watch; opts.onUpdate(watch); }
+      const current = last!;
+      const finished = current.queue
+        ? current.queue.place.kind === 'not_waiting' && current.queue.place.reason === 'terminal'
+        : ['fired', 'failed', 'cancelled', 'expired'].includes(current.status); // older server: no snapshot
+      if (finished) return stop();
+      schedule(current.queue?.refreshAfterMs ?? 5000);
+    } catch (error) {
+      if (opts.signal.aborted) return stop();
+      const status = error instanceof AlyteApiError ? error.status : 0;
+      const fatal = status === 401 || status === 403 || status === 404;
+      opts.onError?.(error, last, fatal);
+      if (fatal) return stop();
+      failures++;
+      schedule(MIN_POLL_MS * 2 ** Math.min(failures, 5));
+    } finally { inFlight = false; }
+  }
+  opts.signal.addEventListener('abort', stop, { once: true });
+  doc?.addEventListener('visibilitychange', onVisible);
+  void tick();
+}
 
 export interface ConsentTheme {
   accent?: string; background?: string; surface?: string; text?: string;

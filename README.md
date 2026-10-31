@@ -184,6 +184,43 @@ Two kinds of session, decided by how you mint:
   ceilings answers `403 merchant_consent_ceiling_exceeded` and Alyte's screen falls back to the
   buyer's own code; without the enablement, the mint answers `403 merchant_consent_not_enabled`.
 
+## Queue a buyer's agent and show their place in line
+
+Unreleased — needs a server with `GET /v1/buyer/watch-capabilities`. From the browser entry point,
+with the bounded buyer bearer:
+
+```ts
+import { createBuyerClient, observeWatch } from '@alytegen/sdk/browser';
+
+const buyer = createBuyerClient({ baseUrl: ALYTE_URL, bearer });
+// Save the whole instruction (never the bearer) BEFORE sending; resend the SAME one after a timeout.
+const instruction = {
+  requestId: crypto.randomUUID(),
+  agentId,
+  request: { kind: 'ticketing' as const, tierId, quantity: 2 },
+  condition: { kind: 'price_at_or_below' as const, maxChargeMinor: 10_000, currency: 'EUR' as const },
+  expiresAt: '2026-12-01T12:00:00Z',
+};
+await saved.put(instruction);
+const { watch } = await buyer.createWatch(instruction);
+
+const stop = new AbortController();
+observeWatch({ client: buyer, watchId: watch.id, signal: stop.signal,
+  onUpdate: (w) => render(w.queue),             // { place: { kind, position, requestsAhead }, waitingReason, … }
+  onError: (_e, last, stopped) => showStale(last, stopped) });
+```
+
+`maxChargeMinor` is the most the buyer pays **for the whole charge**, tax and buyer fees included;
+equality qualifies. `{ kind: 'available' }` buys as soon as the units are there. An older server
+refuses `createWatch` — it never falls back to the legacy `watch()`, which would drop the condition.
+
+The place comes from Alyte's dispatcher, never from counting a list: one place per request (four
+tickets are one place), counted within the capacity the requests compete for and within the
+buyer's access window (`queue.phaseLabel`). The order is oldest first; a smaller request may be
+served past an older, larger one at most three times, then the line holds for it. A request
+waiting on its own price target has no place until it qualifies. A place is not a reservation or
+a promise of tickets.
+
 ## Receive purchases
 
 ```ts
@@ -213,6 +250,10 @@ No amount is passed at confirm — the charge is the locked quote. A spend-cap r
 the buyer's mandate said no: surface it, don't retry.
 
 ## Current API and console capabilities
+
+**Unreleased:** buyer `watchCapabilities`, `createWatch`, `getWatch` and `observeWatch`
+(price-target watches and the buyer's place in line); merchant `insights` reports why queued
+requests wait (`watches[].waiting`).
 
 SDK **0.7.0** adds merchant-controlled early access: `accessRules` (`list`, `get`,
 `createDraft`, `updateDraft`, `preview`, `schedule`, `cancel`) and `memberships`

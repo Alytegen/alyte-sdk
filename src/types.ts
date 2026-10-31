@@ -195,5 +195,7 @@ export interface MerchantInsights {
     failed: number;
     cancelled: number;
     expired: number;
+    /** Why queued requests wait, as the dispatcher last decided. Absent on older servers. */
+    waiting?: { stock: number; whole_party: number; price_target: number; access_window: number };
   }>;
 }
