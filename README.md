@@ -91,6 +91,12 @@ with `catalog_too_large` if any source relation exceeds 2,000 rows, including pr
 eligibility rows. `listLocations` has a separate 2,000-row bound. Neither returns a
 truncated result.
 
+Use `setEventPurchaseLimit`, `getEventPurchaseLimit` and `clearEventPurchaseLimit` to
+cap the tickets one customer can hold or buy across an event (`maxPerCustomer`, optional
+`maxHeldPerCustomer` for unpaid holds, and optional `countWaitingWatches` for queued
+purchases). `PUT` replaces the whole limit, and the first `PUT` counts earlier sales on
+the event.
+
 ## Access rules and membership
 
 Available since SDK 0.7.0; requires a server at or after sandbox revision

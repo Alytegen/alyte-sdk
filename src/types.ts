@@ -32,6 +32,35 @@ export interface EventItem {
   title: string;
   /** ISO-8601 start time. */
   startsAt: string;
+  /** Per-customer ticket limit on this event, when set. */
+  purchaseLimit?: { maxPerCustomer: number; maxHeldPerCustomer?: number };
+}
+
+/** Per-event customer ticket limit record (`GET/PUT /v1/integration/events/:id/purchase-limit`). */
+export interface PurchaseLimit {
+  eventId: string;
+  merchantId: string;
+  maxPerCustomer: number;
+  maxHeldPerCustomer?: number;
+  /** Whether queued purchases count toward the limit while waiting; null when not chosen, which counts. */
+  countWaitingWatches: boolean | null;
+  revision: number;
+  updatedBy?: string;
+  updatedAt: string;
+}
+
+/** How an event's per-customer ticket limit recognises customers and how many tickets it covers. */
+export interface PurchaseLimitReadiness {
+  identifiers: string[];
+  ticketsCounted: number;
+  ticketsNotCounted: number;
+}
+
+/** Body for `AlyteMerchant.setEventPurchaseLimit`. Whole numbers only (`1..1000`); PUT replaces the whole limit. */
+export interface SetPurchaseLimitInput {
+  maxPerCustomer: number;
+  maxHeldPerCustomer?: number;
+  countWaitingWatches?: boolean;
 }
 
 export interface Tier {

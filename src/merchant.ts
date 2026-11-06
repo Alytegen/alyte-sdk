@@ -18,6 +18,9 @@ import type {
   InventoryLocationBinding,
   InventoryOccurrence,
   InventoryPool,
+  PurchaseLimit,
+  PurchaseLimitReadiness,
+  SetPurchaseLimitInput,
 } from './types.js';
 
 /**
@@ -123,6 +126,39 @@ export class AlyteMerchant {
 
   deleteEvent(eventId: string): Promise<{ ok: boolean }> {
     return this.t.request('DELETE', `/v1/integration/events/${encodeURIComponent(eventId)}`);
+  }
+
+  /**
+   * Set or replace the per-customer ticket limit for an event (`merchant:write`).
+   * `maxPerCustomer` (`1..1000`) caps the tickets one customer can hold or buy;
+   * `maxHeldPerCustomer` optionally caps unpaid tickets held at once;
+   * `countWaitingWatches` decides whether queued purchases count while waiting.
+   * PUT replaces the whole limit, and the first PUT counts the event's earlier sales.
+   */
+  setEventPurchaseLimit(
+    eventId: string,
+    input: SetPurchaseLimitInput,
+  ): Promise<{ purchaseLimit: PurchaseLimit; readiness: PurchaseLimitReadiness }> {
+    return this.t.request('PUT', `/v1/integration/events/${encodeURIComponent(eventId)}/purchase-limit`, input);
+  }
+
+  /**
+   * Read an event's per-customer ticket limit (`null` when it has none) and how many
+   * of its tickets the limit can count against a customer (`merchant:read`).
+   */
+  getEventPurchaseLimit(
+    eventId: string,
+  ): Promise<{ purchaseLimit: PurchaseLimit | null; readiness: PurchaseLimitReadiness }> {
+    return this.t.request('GET', `/v1/integration/events/${encodeURIComponent(eventId)}/purchase-limit`);
+  }
+
+  /**
+   * Remove an event's per-customer ticket limit (`merchant:write`).
+   */
+  clearEventPurchaseLimit(
+    eventId: string,
+  ): Promise<{ cleared: boolean }> {
+    return this.t.request('DELETE', `/v1/integration/events/${encodeURIComponent(eventId)}/purchase-limit`);
   }
 
   /** Observed stock and base prices for one shop; not a reserved or quoted offer.
