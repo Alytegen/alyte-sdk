@@ -7,6 +7,21 @@ export type Scheme = 'visa' | 'mastercard' | 'amex';
 export type TierKind = 'general' | 'seated';
 export type FeeBearer = 'buyer' | 'merchant';
 export type * from './inventoryTypes.js';
+export type { BasketLineInput, ReserveBasketInput, ReservationStatus, ReservationLine,
+  Reservation, BasketQuoteLine, BasketQuote, ConfirmReservationInput, ConfirmReservationOutcome } from './baskets.js';
+
+export type TierRole = 'primary' | 'addon';
+/** A server-enforced add-on rule. Qualifying parent tickets must be in the same event and basket. */
+export interface TierLinkRule {
+  parentScope: 'any_primary_in_event' | 'specific_tiers';
+  parentTierIds?: string[];
+  scaling: 'per_basket' | 'per_parent_unit';
+  minQty?: number;
+  maxQty?: number;
+  minPerParent?: number;
+  maxPerParent?: number;
+  parentGroupSize?: number;
+}
 
 export interface Merchant {
   id: string;
@@ -74,6 +89,11 @@ export interface Tier {
   availableCount?: number;
   /** When present, availability comes from this shared pool. Restock the pool. */
   poolId?: string;
+  role?: TierRole;
+  category?: string;
+  categoryLabel?: string;
+  countsTowardPartySize?: boolean;
+  linkRule?: TierLinkRule;
   // Restrictions — all enforced server-side; undefined = unrestricted.
   maxQtyPerPurchase?: number;
   sellable?: boolean;

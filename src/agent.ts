@@ -1,5 +1,7 @@
-import { Transport, type ClientOptions } from './http.js';
+import { AlyteApiError, Transport, type ClientOptions } from './http.js';
 import type { ConfirmOutcome, DiscoveredEvent, Hold, Merchant, Quote, Scheme } from './types.js';
+import { isReservationRefusal, type BasketQuote, type ConfirmReservationInput,
+  type ConfirmReservationOutcome, type Reservation, type ReserveBasketInput } from './baskets.js';
 
 /**
  * Agent buy-path client — the discover → quote → hold → confirm flow, with an
@@ -71,6 +73,53 @@ export class AlyteAgent {
   /** Resolve a pending SCA challenge (bound to the creating agent) and resume. */
   resolveSca(continueToken: string, outcome: 'approved' | 'failed'): Promise<ConfirmOutcome> {
     return this.t.request('POST', `/v1/sca/${encodeURIComponent(continueToken)}/resolve`, { outcome });
+  }
+
+  /** Hold all basket lines atomically. The server checks links, party size and add-on
+   * permission across the entire basket. This call does not charge or auto-retry. */
+  reserveBasket(input: ReserveBasketInput): Promise<Reservation> {
+    return this.t.request('POST', '/v1/reservations', input);
+  }
+
+  /** Read the current basket and every line, including any reconciliation state. Requires payments:read. */
+  getReservation(reservationId: string): Promise<Reservation> {
+    return this.t.request('GET', `/v1/reservations/${encodeURIComponent(reservationId)}`);
+  }
+
+  /** Lock one total for all held lines; the response retains each line's price. */
+  quoteReservation(reservationId: string): Promise<BasketQuote> {
+    return this.t.request('POST', `/v1/reservations/${encodeURIComponent(reservationId)}/quotes`, {});
+  }
+
+  /** Confirm the entire basket as one payment. Persist and reuse the same
+   * idempotency key and inputs after a lost response; never create a new purchase
+   * to retry an uncertain result. HTTP 402 basket outcomes are returned intact. */
+  confirmReservation(reservationId: string, input: ConfirmReservationInput,
+    opts?: { idempotencyKey?: string }): Promise<ConfirmReservationOutcome> {
+    return this.reservationOutcome(`/v1/reservations/${encodeURIComponent(reservationId)}/confirm`, input,
+      opts?.idempotencyKey ? { 'idempotency-key': opts.idempotencyKey } : undefined);
+  }
+
+  /** Release every line early. The server refuses release while payment is in flight. */
+  releaseReservation(reservationId: string): Promise<{ ok: true }> {
+    return this.t.request('DELETE', `/v1/reservations/${encodeURIComponent(reservationId)}`);
+  }
+
+  /** Resume the original basket after its SCA challenge. Bound to the creating
+   * principal; the server verifies the challenge outcome and payment authority. */
+  resolveBasketSca(continueToken: string, outcome: 'approved' | 'failed'): Promise<ConfirmReservationOutcome> {
+    return this.reservationOutcome(`/v1/reservations/sca/${encodeURIComponent(continueToken)}/resolve`, { outcome });
+  }
+
+  private async reservationOutcome(path: string, input: unknown,
+    headers?: Record<string, string>): Promise<ConfirmReservationOutcome> {
+    try {
+      return await this.t.request('POST', path, input, headers);
+    } catch (error) {
+      if (error instanceof AlyteApiError && error.status === 402 && error.code === 'http_402'
+        && isReservationRefusal(error.details)) return error.details;
+      throw error;
+    }
   }
 
   /** Vaulted payment instruments this agent may spend from (opaque tokens only). */

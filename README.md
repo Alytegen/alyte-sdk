@@ -255,11 +255,55 @@ const out   = await agent.confirm(hold.id,
 No amount is passed at confirm — the charge is the locked quote. A spend-cap refusal means
 the buyer's mandate said no: surface it, don't retry.
 
+## Agent: baskets with one payment
+
+Unreleased. Use `reserveBasket`, `getReservation`, `quoteReservation`,
+`confirmReservation`, `releaseReservation` and `resolveBasketSca` for the existing
+`/v1/reservations/*` API. Reading a reservation requires `payments:read`; the other
+methods require `payments:write`. Discovery also exposes tier `role`, `category`,
+`countsTowardPartySize` and `linkRule` so an agent can include required parent tickets.
+
+```ts
+const reservation = await agent.reserveBasket({
+  lines: [{ tierId: adultTierId, quantity: 2 }, { tierId: childTierId, quantity: 1 }],
+  scheme: 'visa', geo: 'DE',
+});
+const quote = await agent.quoteReservation(reservation.id);
+// Persist the reservation ID, these inputs and the key BEFORE confirming.
+const input = { quoteId: quote.id, instrumentToken, scheme: 'visa' as const, geo: 'DE' };
+const options = { idempotencyKey: crypto.randomUUID() };
+const outcome = await agent.confirmReservation(reservation.id, input, options);
+if (outcome.status === 'settled' && outcome.result.status === 'authorized'
+    && outcome.reservationStatus === 'confirmed') {
+  // The complete basket was paid and confirmed.
+}
+```
+
+A basket holds 1–20 lines from one merchant in one currency, atomically. Partial
+fills and seated allocation are not supported. The server enforces link rules,
+party-size limits, add-on permission and spending caps across the whole basket.
+The `BasketQuote` has `lines` and one `chargeMinor`; it has no single `unitPriceMinor`.
+
+Both confirmation and SCA resolution return the complete `ConfirmReservationOutcome`,
+including HTTP 402 business outcomes. `sca_required` keeps the basket held; continue
+the original challenge with `resolveBasketSca(continueToken, outcome)` using the
+same authenticated agent and the server's verified challenge flow. `sca_failed`
+releases it. A settled decline is a known refusal. `payment_pending`, or a settled
+error with `reservationStatus: 'reconcile'`, needs payment recovery; do not fulfil,
+release stock, or create a new purchase to retry it. Ordinary API refusals still
+throw `AlyteApiError` with their code and details.
+
+The client never retries automatically. After a lost confirmation response, reuse
+the saved reservation, inputs and idempotency key. Reserve is not idempotent: retrying
+it creates another hold. If a buyer abandons a known unpaid basket, call
+`releaseReservation(reservation.id)`; the server refuses release during payment.
+See [`examples/agent-basket.ts`](./examples/agent-basket.ts) for a runnable example.
+
 ## Current API and console capabilities
 
 **Unreleased:** buyer `watchCapabilities`, `createWatch`, `getWatch` and `observeWatch`
 (price-target watches and the buyer's place in line); merchant `insights` reports why queued
-requests wait (`watches[].waiting`).
+requests wait (`watches[].waiting`); agent basket reservation methods described above.
 
 SDK **0.7.0** adds merchant-controlled early access: `accessRules` (`list`, `get`,
 `createDraft`, `updateDraft`, `preview`, `schedule`, `cancel`) and `memberships`
