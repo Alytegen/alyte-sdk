@@ -93,8 +93,10 @@ const attempt = { agentId, tierId, quantity: 1, attemptId: crypto.randomUUID() }
 // across reloads and reconnects. Namespace it to this buyer/shop/cart.
 await attempts.save(attempt);
 const purchase = await buyer.buy(attempt);
-if (purchase.status === 'pending') {
-  const receipt = await buyer.payment(purchase.intentId); // refresh later if pending
+if (purchase.status === 'pending' && 'purchaseId' in purchase && purchase.purchaseId) {
+  const state = await buyer.resumePurchase(purchase.purchaseId); // same purchase, never buy again
+} else if (purchase.status === 'pending' && 'intentId' in purchase) {
+  const receipt = await buyer.payment(purchase.intentId); // legacy receipt
 }
 ```
 
@@ -102,8 +104,8 @@ The UUID is required; the SDK never invents one or retries requests automaticall
 After a network failure, resume with the **same saved attempt**, including agent,
 tier, quantity and ID. Never create a fresh attempt to retry an uncertain charge.
 `settled` is success; `pending` remains unresolved. `sca_required` is an authentication
-continuation requirement; browser SCA resume is not yet available. Do not treat it
-as success or dispatch a new purchase. Non-2xx responses throw `AlyteApiError` with
+continuation requirement: use `openChallenge` when a `purchaseId` is present. Do not
+treat it as success or dispatch a new purchase. Non-2xx responses throw `AlyteApiError` with
 `status`, `code` and `details`; purchase `402` outcome bodies are in `details`.
 
 Other methods: `me()`, `catalog()`, `agents()`, `instruments()`, `instrumentCaps()`,
@@ -117,7 +119,7 @@ Browser completion messages are presentation state, not fulfillment evidence.
 
 ## Finish a bank challenge for an existing purchase
 
-On deployments supporting buyer-present Stripe purchases, `buy()` can return
+On deployments supporting buyer-present purchases, `buy()` can return
 `{ status: 'sca_required', purchaseId, challenge: { expiresAt } }`. Keep the opaque
 `purchaseId` alongside the original attempt. Do not call `buy()` again or allocate
 another attempt ID to handle the challenge.
@@ -127,7 +129,7 @@ import { createBuyerClient, openChallenge } from '@alytegen/sdk/browser';
 
 const client = createBuyerClient({ baseUrl, bearer });
 const purchase = await client.buy(savedAttempt);
-if (purchase.status === 'sca_required' && purchase.purchaseId) {
+if (['sca_required', 'pending'].includes(purchase.status) && 'purchaseId' in purchase && purchase.purchaseId) {
   const result = await openChallenge({
     baseUrl, merchantId, bearer, purchaseId: purchase.purchaseId,
     container: document.querySelector('#bank-approval')!,
@@ -141,9 +143,10 @@ if (purchase.status === 'sca_required' && purchase.purchaseId) {
 
 The launcher uses the same registered parent origin, in-memory bounded bearer,
 shop binding and optional theme/language parameters as `openConsent`. It opens a
-separate challenge view. Only the Alyte frame retrieves Stripe's transient action
-material and calls `handleNextAction`; the server retrieves and confirms the
-original PaymentIntent. No browser `approved` flag is accepted. Parent callbacks
+separate challenge view. Only the Alyte frame retrieves provider action material.
+Stripe uses `handleNextAction`; Adyen sandbox native 3DS2 uses the pinned Adyen Web
+component, real browser information, and the server's bound action round. The
+server verifies the original payment and its details proof. No browser `approved` flag is accepted. Parent callbacks
 contain only the purchase ID and safe status, never provider secrets or receipts.
 
 `openChallenge` remains open for pending or action-required purchases. It polls
@@ -160,3 +163,35 @@ cancellation). Resume and cancel send an empty body and are never automatically
 retried by these client methods. The SDK intentionally exposes no action-material
 method. Older mock flows may return `sca_required` without a purchase ID; this
 launcher does not turn those mock tokens into real bank authentication.
+
+
+## Recover a queued purchase
+
+A watch can become `awaiting_sca`. Its safe `result` carries `purchaseId` and
+`challenge.expiresAt`. A `firing` watch can also carry a pending `purchaseId` while
+its provider outcome is uncertain. Open that existing purchase with `openChallenge`;
+do not call `buy`, create another watch, or infer cancellation from the deadline.
+`observeWatch` keeps reading until the server reports a terminal watch state.
+
+```ts
+const { watch } = await client.getWatch(savedWatchId);
+if (['awaiting_sca', 'firing'].includes(watch.status) && watch.result?.purchaseId) {
+  await openChallenge({ baseUrl, merchantId, bearer,
+    purchaseId: watch.result.purchaseId, container: challengeContainer,
+    signal: modalAbortController.signal });
+}
+```
+
+The merchant webhook SDK exposes `onWatchActionRequired` for signed
+`watch.action_required` deliveries. The event contains safe watch/purchase IDs,
+`buyerRef`, merchant/tenant scope, and the original deadline. Deduplicate by
+`eventId` and relay the action through the merchant's own buyer channel; the SDK
+deliberately passes redeliveries to the handler. A link grants no authority: the
+buyer still needs their own shop-bound session. This event is never fulfilment.
+A verified `approval_expired` or `buyer_cancelled` outcome ends the watch without
+automatically starting another purchase.
+
+Adyen action/details remain exclusive to the Alyte challenge frame. The public
+browser client exposes safe status/resume/cancel only. Native sandbox actions are
+supported by this slice; redirect actions, production activation, and real-provider
+qualification remain separate gates. Closing the frame preserves the purchase.

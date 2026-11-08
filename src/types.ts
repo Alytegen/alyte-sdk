@@ -161,10 +161,10 @@ export interface Hold {
 }
 
 /** Verified purchase authentication facts; never an assertion of liability shift. */
-export interface PurchaseAuthentication {
-  provider: 'stripe'; paymentIntentId: string; chargeId?: string; result: string;
-  flow?: string; version?: string; eci?: string; transactionId?: string; observedAt: string;
-}
+export type PurchaseAuthentication = (
+  | { provider: 'stripe'; paymentIntentId: string; chargeId?: string }
+  | { provider: 'adyen'; pspReference: string }
+) & { result: string; flow?: string; version?: string; eci?: string; transactionId?: string; observedAt: string };
 
 export interface PaymentResult {
   purchaseId?: string;

@@ -17,13 +17,20 @@ export interface BuyerAgent {
 }
 export interface BuyerWatch {
   id: string; agentId: string; merchantId: string; tierId: string; quantity: number;
-  status: 'queued' | 'paused' | 'firing' | 'fired' | 'failed' | 'cancelled' | 'expired';
-  result?: Record<string, unknown>; expiresAt?: string; createdAt: string; firedAt?: string;
+  status: 'queued' | 'paused' | 'firing' | 'awaiting_sca' | 'fired' | 'failed' | 'cancelled' | 'expired';
+  result?: BuyerWatchResult; expiresAt?: string; createdAt: string; firedAt?: string;
   /** Absent on legacy watches and older servers: treat as availability. */
   conditionSpec?: WatchCondition;
   /** Server-computed place in line. Absent on older servers = unavailable, never position zero. */
   queue?: WatchQueueSnapshot;
 }
+/** A pending purchase keeps its original identity; openChallenge never buys or requeues it. */
+export type BuyerWatchResult = Record<string, unknown> & {
+  status?: string;
+  purchaseId?: string;
+  challenge?: { expiresAt: string };
+  code?: string;
+};
 export type WatchCondition =
   | { kind: 'available' }
   | { kind: 'price_at_or_below'; maxChargeMinor: number; currency: 'EUR' | 'GBP' | 'USD' };
@@ -64,7 +71,7 @@ export type BuyerPurchase =
   | { status: 'pending'; purchaseId: string }
   | { status: 'refused' | 'error'; outcome: unknown };
 export type BuyerPurchaseStatus = 'pending' | 'sca_required' | 'settled' | 'refused' | 'cancelled' | 'expired';
-export interface BuyerPurchaseState { authenticationRetry?: boolean; purchaseId: string; status: BuyerPurchaseStatus; chargeMinor?: number; currency?: string; challenge?: { expiresAt: string }; result?: PaymentResult }
+export interface BuyerPurchaseState { authenticationRetry?: boolean; provider?: 'stripe' | 'adyen'; purchaseId: string; status: BuyerPurchaseStatus; chargeMinor?: number; currency?: string; challenge?: { expiresAt: string }; result?: PaymentResult }
 export interface BuyerReceipt { intentId: string; status: 'settled' | 'pending' | 'refused'; chargeMinor: number; currency: string; paymentState?: string }
 export interface BuyerClientOptions { baseUrl: string; bearer: string; fetch?: typeof globalThis.fetch }
 

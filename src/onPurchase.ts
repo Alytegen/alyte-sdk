@@ -49,6 +49,19 @@ export interface WatchFailed {
   failedAt: string;
 }
 
+/** Relay to the merchant's buyer before the deadline. This event grants no authority and is not fulfilment. */
+export interface WatchActionRequired {
+  tenantId: string;
+  merchantId: string;
+  buyerRef: string;
+  watchId: string;
+  purchaseId: string;
+  deadline: string;
+  agentId?: string;
+  tierId?: string;
+  quantity?: number;
+}
+
 /** A signed delivery carrying no payment data. NEVER fulfil on this. */
 export interface WebhookTest {
   [key: string]: unknown;
@@ -59,6 +72,8 @@ export interface PurchaseHandlers {
   onSettled?: (data: PaymentSettled, event: AlyteEventEnvelope<PaymentSettled>) => Promise<void> | void;
   /** A queued purchase terminally refused. Tell the buyer why. */
   onWatchFailed?: (data: WatchFailed, event: AlyteEventEnvelope<WatchFailed>) => Promise<void> | void;
+  /** The merchant owns buyer outreach. Deduplicate by eventId; do not buy again or fulfil. */
+  onWatchActionRequired?: (data: WatchActionRequired, event: AlyteEventEnvelope<WatchActionRequired>) => Promise<void> | void;
   /** A test delivery — use it to prove your signature check works. */
   onTest?: (event: AlyteEventEnvelope<WebhookTest>) => Promise<void> | void;
   /** Any event type this SDK version does not know. Default: ignored. */
@@ -143,6 +158,9 @@ export async function handleWebhook(
       break;
     case 'watch.failed':
       await handlers.onWatchFailed?.(event.data as WatchFailed, event as AlyteEventEnvelope<WatchFailed>);
+      break;
+    case 'watch.action_required':
+      await handlers.onWatchActionRequired?.(event.data as WatchActionRequired, event as AlyteEventEnvelope<WatchActionRequired>);
       break;
     case 'webhook.test':
       await handlers.onTest?.(event as AlyteEventEnvelope<WebhookTest>);
