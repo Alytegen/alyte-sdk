@@ -66,6 +66,7 @@ export interface ConfirmReservationInput {
 export type ConfirmReservationOutcome =
   | { status: 'settled'; result: PaymentResult; reservationStatus: string; reservation?: Reservation }
   | { status: 'payment_pending'; result: PaymentResult; reservationStatus: string }
+  | { status: 'sca_required'; purchaseId: string; challenge: { expiresAt: string }; reservationStatus: 'reconcile' }
   | { status: 'sca_required'; challenge: { continueToken: string; [k: string]: unknown }; reservationStatus: 'held' }
   | { status: 'sca_failed'; reservationStatus: 'released' };
 

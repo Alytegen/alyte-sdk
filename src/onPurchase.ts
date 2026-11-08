@@ -16,6 +16,8 @@ export interface AlyteEventEnvelope<T = unknown> {
 
 /** A purchase that authorized and captured. Fulfil on `tierId` + `quantity`. */
 export interface PaymentSettled {
+  /** Verified purchase facts when the PSP reports them; not a liability-shift assertion. */
+  authentication?: import('./types.js').PurchaseAuthentication;
   intentId: string;
   merchantId: string;
   /** Integer minor units. NEVER a float — see formatMinor for display. */

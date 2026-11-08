@@ -160,7 +160,15 @@ export interface Hold {
   partialReason?: string;
 }
 
+/** Verified purchase authentication facts; never an assertion of liability shift. */
+export interface PurchaseAuthentication {
+  provider: 'stripe'; paymentIntentId: string; chargeId?: string; result: string;
+  flow?: string; version?: string; eci?: string; transactionId?: string; observedAt: string;
+}
+
 export interface PaymentResult {
+  purchaseId?: string;
+  authentication?: PurchaseAuthentication;
   intentId: string;
   status: string;
   psp?: string;
@@ -170,7 +178,9 @@ export interface PaymentResult {
 }
 
 export type ConfirmOutcome =
+  | { status: 'payment_pending'; result: PaymentResult; holdStatus: 'reconcile' }
   | { status: 'settled'; result: PaymentResult; holdStatus: string }
+  | { status: 'sca_required'; purchaseId: string; challenge: { expiresAt: string }; holdStatus: 'reconcile' }
   | { status: 'sca_required'; challenge: { continueToken: string; [k: string]: unknown }; holdStatus: 'held' }
   | { status: 'sca_failed'; holdStatus: 'released' };
 

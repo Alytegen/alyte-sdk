@@ -54,7 +54,8 @@ export class AlyteAgent {
   /**
    * Pay the locked quote and confirm the hold. Pass a stable `idempotencyKey`
    * per purchase intent so retries can NEVER double-charge. Outcomes:
-   * `settled` · `sca_required` (resume via `resolveSca`) · a thrown
+   * `settled` · `sca_required` (purchaseId → buyer openChallenge; legacy mock
+   * continueToken → resolveSca) · a thrown
    * AlyteApiError on refusal (stable `code`, e.g. spend-cap or scheme refusals).
    */
   confirm(
@@ -70,7 +71,8 @@ export class AlyteAgent {
     );
   }
 
-  /** Resolve a pending SCA challenge (bound to the creating agent) and resume. */
+  /** Legacy mock challenge only. A durable purchaseId must be completed by the buyer
+   * through openChallenge; a caller-supplied outcome cannot authenticate a real payment. */
   resolveSca(continueToken: string, outcome: 'approved' | 'failed'): Promise<ConfirmOutcome> {
     return this.t.request('POST', `/v1/sca/${encodeURIComponent(continueToken)}/resolve`, { outcome });
   }
@@ -105,8 +107,8 @@ export class AlyteAgent {
     return this.t.request('DELETE', `/v1/reservations/${encodeURIComponent(reservationId)}`);
   }
 
-  /** Resume the original basket after its SCA challenge. Bound to the creating
-   * principal; the server verifies the challenge outcome and payment authority. */
+  /** Legacy mock basket challenge only, bound to its creating principal. A durable
+   * purchaseId uses buyer openChallenge, never this caller-supplied outcome. */
   resolveBasketSca(continueToken: string, outcome: 'approved' | 'failed'): Promise<ConfirmReservationOutcome> {
     return this.reservationOutcome(`/v1/reservations/sca/${encodeURIComponent(continueToken)}/resolve`, { outcome });
   }

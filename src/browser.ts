@@ -1,6 +1,6 @@
 /** Browser-only buyer connection. No merchant key or raw agent credential belongs here. */
 import { AlyteApiError } from './http.js';
-import type { DiscoveredEvent, Scheme } from './types.js';
+import type { DiscoveredEvent, PaymentResult, Scheme } from './types.js';
 export { AlyteApiError } from './http.js';
 
 export interface BuyerConnection { bearer: string; buyerId: string; expiresAt: string }
@@ -59,8 +59,12 @@ export interface WatchInstruction {
 }
 export type BuyerPurchase =
   | { status: 'settled' | 'pending'; intentId: string; chargeMinor: number; currency: string; paymentState?: string; agentName?: string }
-  | { status: 'sca_required' }
+  | { status: 'sca_required'; purchaseId: string; challenge: { expiresAt: string } }
+  | { status: 'sca_required'; purchaseId?: never; challenge?: never }
+  | { status: 'pending'; purchaseId: string }
   | { status: 'refused' | 'error'; outcome: unknown };
+export type BuyerPurchaseStatus = 'pending' | 'sca_required' | 'settled' | 'refused' | 'cancelled' | 'expired';
+export interface BuyerPurchaseState { authenticationRetry?: boolean; purchaseId: string; status: BuyerPurchaseStatus; chargeMinor?: number; currency?: string; challenge?: { expiresAt: string }; result?: PaymentResult }
 export interface BuyerReceipt { intentId: string; status: 'settled' | 'pending' | 'refused'; chargeMinor: number; currency: string; paymentState?: string }
 export interface BuyerClientOptions { baseUrl: string; bearer: string; fetch?: typeof globalThis.fetch }
 
@@ -108,6 +112,10 @@ export function createBuyerClient(opts: BuyerClientOptions) {
       if (typeof input.attemptId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.attemptId)) throw new TypeError('A saved UUID attemptId is required');
       return call<BuyerPurchase>('POST', `/agents/${encodeURIComponent(input.agentId)}/buy`, { tierId: input.tierId, quantity: input.quantity, attemptId: input.attemptId });
     },
+    /** Recover this purchase; never start a new buy after an uncertain response or a challenge. */
+    purchase: (purchaseId: string) => call<BuyerPurchaseState>('GET', `/purchases/${encodeURIComponent(purchaseId)}`),
+    resumePurchase: (purchaseId: string) => call<BuyerPurchaseState>('POST', `/purchases/${encodeURIComponent(purchaseId)}/resume`, {}),
+    cancelPurchase: (purchaseId: string) => call<BuyerPurchaseState>('POST', `/purchases/${encodeURIComponent(purchaseId)}/cancel`, {}),
     payment: (intentId: string) => call<BuyerReceipt>('GET', `/payments/${encodeURIComponent(intentId)}`),
     watch: (input: { agentId: string; tierId: string; quantity: number; expiresInDays?: number }) => call<{ watch: BuyerWatch }>('POST', '/watches', input),
     cancelWatch: (watchId: string) => call<{ watch: BuyerWatch }>('DELETE', `/watches/${encodeURIComponent(watchId)}`),
@@ -268,6 +276,86 @@ export function openConsent(opts: ConsentOptions): Promise<ConsentResult> {
     opts.signal?.addEventListener('abort', abort, { once: true });
     timer = setTimeout(() => fail('consent_unavailable'), opts.readyTimeoutMs ?? 15_000);
     iframe.addEventListener('error', () => fail('consent_unavailable'), { once: true });
+    opts.container.append(iframe);
+  });
+}
+
+
+export interface ChallengeStatus { purchaseId: string; status: BuyerPurchaseStatus }
+export interface ChallengeResult extends ChallengeStatus { status: 'settled' | 'refused' | 'cancelled' | 'expired' }
+export interface ChallengeOptions extends Omit<ConsentOptions, 'tierId' | 'quantity'> {
+  purchaseId: string;
+  /** Safe status only. Provider action material never leaves the Alyte frame. */
+  onStatus?: (state: ChallengeStatus) => void;
+}
+export class AlyteChallengeError extends Error {
+  constructor(readonly code: string) { super(`Alyte challenge: ${code}`); this.name = 'AlyteChallengeError'; }
+}
+
+/**
+ * Complete an existing purchase in Alyte's isolated frame. No buy, purchase key,
+ * payment details or caller-supplied approval is sent. Aborting closes only the
+ * frame; the server purchase remains recoverable until its verified outcome.
+ */
+export function openChallenge(opts: ChallengeOptions): Promise<ChallengeResult> {
+  const base = baseOrigin(opts.baseUrl);
+  if (!opts.merchantId || !opts.bearer) throw new TypeError('merchantId and bearer are required');
+  if (typeof opts.purchaseId !== 'string' || !opts.purchaseId || opts.purchaseId.length > 512) throw new TypeError('purchaseId is required');
+  const doc = opts.container.ownerDocument, host = doc.defaultView;
+  if (!host) throw new TypeError('container must belong to a browser document');
+  if (opts.readyTimeoutMs !== undefined && (!Number.isFinite(opts.readyTimeoutMs) || opts.readyTimeoutMs <= 0)) throw new TypeError('readyTimeoutMs must be positive');
+  const url = new URL(`/shop/${encodeURIComponent(opts.merchantId)}/authorize`, base);
+  url.searchParams.set('view', 'challenge'); url.searchParams.set('embed', '1');
+  url.searchParams.set('purchase', opts.purchaseId);
+  if (opts.lang) url.searchParams.set('lang', opts.lang);
+  if (opts.returnUrl) {
+    const back = new URL(opts.returnUrl);
+    if (back.origin !== host.location.origin) throw new TypeError('returnUrl must belong to the host origin');
+    url.searchParams.set('return', back.href);
+  }
+  for (const key of ['accent', 'background', 'surface', 'text', 'font', 'radius', 'scheme'] as const) {
+    const value = opts.theme?.[key];
+    if ((typeof value === 'string' || typeof value === 'number') && String(value).length <= 64) url.searchParams.set(key, String(value));
+  }
+  const statuses: BuyerPurchaseStatus[] = ['pending', 'sca_required', 'settled', 'refused', 'cancelled', 'expired'];
+  return new Promise((resolve, reject) => {
+    const iframe = doc.createElement('iframe');
+    iframe.title = 'Alyte bank authentication'; iframe.src = url.href; iframe.referrerPolicy = 'no-referrer';
+    iframe.style.width = '100%'; iframe.style.height = '640px'; iframe.style.border = '0';
+    let done = false, ready = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const cleanup = () => { clearTimeout(timer); host.removeEventListener('message', receive); opts.signal?.removeEventListener('abort', abort); iframe.remove(); };
+    const fail = (code: string) => { if (!done) { done = true; cleanup(); reject(new AlyteChallengeError(code)); } };
+    const abort = () => fail('challenge_closed');
+    const receive = (event: MessageEvent) => {
+      if (done || event.origin !== base || event.source !== iframe.contentWindow) return;
+      const data = event.data;
+      if (!data || data.type !== 'alyte:challenge' || data.merchantId !== opts.merchantId || data.purchaseId !== opts.purchaseId) return;
+      if (data.event === 'ready') {
+        ready = true; clearTimeout(timer);
+        iframe.contentWindow?.postMessage({ type: 'alyte:challenge', event: 'bootstrap', purchaseId: opts.purchaseId, bearer: opts.bearer }, base);
+      } else if (data.event === 'status' && ready && statuses.includes(data.status)) {
+        // Copy only this allowlist. Neither unexpected fields nor result payloads
+        // from a future frame version become a merchant callback or receipt.
+        const state: ChallengeStatus = { purchaseId: opts.purchaseId, status: data.status };
+        if (state.status !== 'pending' && state.status !== 'sca_required') {
+          done = true; cleanup(); resolve(state as ChallengeResult);
+        }
+        opts.onStatus?.(state);
+      } else if (data.event === 'error') {
+        fail(data.code === 'unauthorized' ? 'unauthorized' : 'challenge_unavailable');
+      } else if (data.event === 'resize' && Number.isFinite(data.height)) {
+        iframe.style.height = `${Math.max(240, Math.min(1200, Math.ceil(data.height)))}px`;
+      } else if (data.event === 'navigate' && typeof data.url === 'string') {
+        try { const back = new URL(data.url); if (back.origin === host.location.origin) opts.onNavigate?.(back.href); }
+        catch { /* Ignore malformed navigation messages. */ }
+      }
+    };
+    if (opts.signal?.aborted) { abort(); return; }
+    host.addEventListener('message', receive);
+    opts.signal?.addEventListener('abort', abort, { once: true });
+    timer = setTimeout(() => fail('challenge_unavailable'), opts.readyTimeoutMs ?? 15_000);
+    iframe.addEventListener('error', () => fail('challenge_unavailable'), { once: true });
     opts.container.append(iframe);
   });
 }

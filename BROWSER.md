@@ -114,3 +114,49 @@ live availability. An ordinary bounded bearer cannot create or widen spending au
 
 Your backend still fulfills from verified settlement webhooks, idempotently.
 Browser completion messages are presentation state, not fulfillment evidence.
+
+## Finish a bank challenge for an existing purchase
+
+On deployments supporting buyer-present Stripe purchases, `buy()` can return
+`{ status: 'sca_required', purchaseId, challenge: { expiresAt } }`. Keep the opaque
+`purchaseId` alongside the original attempt. Do not call `buy()` again or allocate
+another attempt ID to handle the challenge.
+
+```ts
+import { createBuyerClient, openChallenge } from '@alytegen/sdk/browser';
+
+const client = createBuyerClient({ baseUrl, bearer });
+const purchase = await client.buy(savedAttempt);
+if (purchase.status === 'sca_required' && purchase.purchaseId) {
+  const result = await openChallenge({
+    baseUrl, merchantId, bearer, purchaseId: purchase.purchaseId,
+    container: document.querySelector('#bank-approval')!,
+    signal: modalAbortController.signal,
+    onStatus: ({ purchaseId, status }) => showPurchaseStatus(purchaseId, status),
+  });
+  // result has only purchaseId and the server's terminal status:
+  // settled | refused | cancelled | expired.
+}
+```
+
+The launcher uses the same registered parent origin, in-memory bounded bearer,
+shop binding and optional theme/language parameters as `openConsent`. It opens a
+separate challenge view. Only the Alyte frame retrieves Stripe's transient action
+material and calls `handleNextAction`; the server retrieves and confirms the
+original PaymentIntent. No browser `approved` flag is accepted. Parent callbacks
+contain only the purchase ID and safe status, never provider secrets or receipts.
+
+`openChallenge` remains open for pending or action-required purchases. It polls
+`resume` at a bounded interval while visible, with at most one request in flight,
+and pauses polling during issuer interaction. Aborting removes the frame and
+rejects with `challenge_closed`; it does not cancel or retry the purchase.
+Reopening with the same purchase ID recovers it. The buyer can explicitly request
+cancellation inside the frame; the UI waits for the server's verified outcome.
+
+For status outside the frame, use `client.purchase(purchaseId)` (read the durable
+state), `client.resumePurchase(purchaseId)` (ask the server to retrieve/advance the
+same payment), or `client.cancelPurchase(purchaseId)` (request verified
+cancellation). Resume and cancel send an empty body and are never automatically
+retried by these client methods. The SDK intentionally exposes no action-material
+method. Older mock flows may return `sca_required` without a purchase ID; this
+launcher does not turn those mock tokens into real bank authentication.
