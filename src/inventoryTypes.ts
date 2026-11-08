@@ -6,6 +6,8 @@ export interface InventoryPool {
   tenantId: string;
   merchantId: string;
   eventId?: string;
+  /** The integrator's stable id (per tenant), when the pool was created with one. */
+  externalRef?: string;
   title: string;
   capacity: number;
   availableCount: number;

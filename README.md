@@ -301,7 +301,7 @@ See [`examples/agent-basket.ts`](./examples/agent-basket.ts) for a runnable exam
 
 ## Current API and console capabilities
 
-**Unreleased:** buyer `watchCapabilities`, `createWatch`, `getWatch` and `observeWatch`
+**Unreleased:** merchant `createPool` accepts `externalRef` (idempotent pool creates, returns `existing: true` on a repeat); buyer `watchCapabilities`, `createWatch`, `getWatch` and `observeWatch`
 (price-target watches and the buyer's place in line); merchant `insights` reports why queued
 requests wait (`watches[].waiting`); agent basket reservation methods described above.
 

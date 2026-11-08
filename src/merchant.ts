@@ -190,7 +190,9 @@ export class AlyteMerchant {
     return this.t.request('PUT', `/v1/integration/merchants/${encodeURIComponent(merchantId)}/slots/${encodeURIComponent(slotId)}/location`, input);
   }
 
-  createPool(input: { merchantId: string; eventId?: string | null; title: string; capacity: number }): Promise<{ pool: InventoryPool }> {
+  /** Create a shared pool. With `externalRef` (your stable id, unique per tenant) the create is
+   * idempotent: a repeat returns the existing pool untouched with `existing: true`. */
+  createPool(input: { merchantId: string; eventId?: string | null; title: string; capacity: number; externalRef?: string }): Promise<{ pool: InventoryPool; existing?: boolean }> {
     return this.t.request('POST', '/v1/integration/pools', input);
   }
 
