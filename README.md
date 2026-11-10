@@ -21,9 +21,9 @@ npm install @alytegen/sdk
 | `AlyteMerchant` | API token (console → API keys) | your server only | shops, events, tiers, PSP links, buyer-session mint, payments visibility |
 | `AlyteAgent` | agent JWT | your agent runtime | discover → quote → hold → confirm |
 | `createWebhookHandler` / `verifyWebhookSignature` | webhook secret | your server | signed, at-least-once purchase events with typed dispatch |
-| `exchangeBuyerSession` / `createBuyerClient` / `openConsent` from `@alytegen/sdk/browser` | bounded buyer bearer | partner browser/chat | isolated consent, then buy/watch/list/revoke within existing authority |
+| `exchangeBuyerSession` / `createBuyerClient` / `openConsent` / `openChallenge` from `@alytegen/sdk/browser` | bounded buyer bearer | partner browser/chat | isolated consent and challenge continuation, then buy/watch/list/revoke within existing authority |
 
-The browser entry arrived in 0.4.0; 0.7.0 is the current release. See [the chat integration](./BROWSER.md) for setup,
+The browser entry arrived in 0.4.0; 0.8.0 is the current release. See [the chat integration](./BROWSER.md) for setup,
 cookie-independent consent, reconnecting and handling uncertain purchases.
 
 ## Merchant: onboard in four calls
@@ -192,7 +192,7 @@ Two kinds of session, decided by how you mint:
 
 ## Queue a buyer's agent and show their place in line
 
-Unreleased — needs a server with `GET /v1/buyer/watch-capabilities`. From the browser entry point,
+Available since SDK 0.8.0 (requires a server with `GET /v1/buyer/watch-capabilities`). From the browser entry point,
 with the bounded buyer bearer:
 
 ```ts
@@ -257,7 +257,7 @@ the buyer's mandate said no: surface it, don't retry.
 
 ## Agent: baskets with one payment
 
-Unreleased. Use `reserveBasket`, `getReservation`, `quoteReservation`,
+Available since SDK 0.8.0. Use `reserveBasket`, `getReservation`, `quoteReservation`,
 `confirmReservation`, `releaseReservation` and `resolveBasketSca` for the existing
 `/v1/reservations/*` API. Reading a reservation requires `payments:read`; the other
 methods require `payments:write`. Discovery also exposes tier `role`, `category`,
@@ -301,11 +301,13 @@ See [`examples/agent-basket.ts`](./examples/agent-basket.ts) for a runnable exam
 
 ## Current API and console capabilities
 
-**Unreleased:** merchant `createPool` accepts `externalRef` (idempotent pool creates, returns `existing: true` on a repeat); buyer `watchCapabilities`, `createWatch`, `getWatch` and `observeWatch`
-(price-target watches and the buyer's place in line); merchant `insights` reports why queued
-requests wait (`watches[].waiting`); agent basket reservation methods described above.
+SDK **0.8.0** adds:
+- **Per-event customer ticket limits (`AlyteMerchant`):** `setEventPurchaseLimit`, `getEventPurchaseLimit` and `clearEventPurchaseLimit`, plus idempotent pool creation via `createPool({ externalRef })`.
+- **All-or-nothing basket checkout (`AlyteAgent`):** `reserveBasket`, `getReservation`, `quoteReservation`, `confirmReservation`, `releaseReservation` and `resolveBasketSca`, plus tier `role`, `category`, `categoryLabel`, `countsTowardPartySize` and `linkRule` on discovery/catalogue reads.
+- **Buyer queue place & price targets (`@alytegen/sdk/browser`):** `watchCapabilities`, `createWatch`, `getWatch` and `observeWatch`, plus `watches[].waiting` on `AlyteMerchant.insights`.
+- **Buyer-present bank challenge continuation (`@alytegen/sdk/browser` & webhooks):** `openChallenge`, `purchase`, `resumePurchase` and `cancelPurchase` (with `authenticationRetry` on `BuyerPurchaseState`, `awaiting_sca` on `BuyerWatch`, and `onWatchActionRequired` on `createWebhookHandler`; server-side buyer-present payment flags remain gated on deployment qualification).
 
-SDK **0.7.0** adds merchant-controlled early access: `accessRules` (`list`, `get`,
+SDK **0.7.0** added merchant-controlled early access: `accessRules` (`list`, `get`,
 `createDraft`, `updateDraft`, `preview`, `schedule`, `cancel`) and `memberships`
 (`createProgram`, `upsert`). **0.6.0** added inventory management: shared pools (`createPool`, `listPools`, `updatePool`),
 optional venue locations with pinned versions (`createLocation`, `listLocations`, `updateLocation`,

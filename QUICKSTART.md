@@ -31,7 +31,12 @@ const { tier } = await alyte.createTier({ eventId: event.id, title: 'GA', priceM
 
 Money is **integer minor units** everywhere (`4900` = €49.00). Floats are refused.
 
-SDK 0.7.0 also includes `alyte.accessRules` and `alyte.memberships` for
+SDK 0.8.0 adds per-event ticket limits (`setEventPurchaseLimit`, `getEventPurchaseLimit`,
+`clearEventPurchaseLimit`), idempotent pool creation (`createPool({ externalRef })`),
+all-or-nothing basket checkout on `AlyteAgent` (`reserveBasket`, `getReservation`,
+`quoteReservation`, `confirmReservation`, `releaseReservation`, `resolveBasketSca`), and
+browser queue-place / bank-challenge continuation (`createWatch`, `observeWatch`,
+`openChallenge`). SDK 0.7.0 added `alyte.accessRules` and `alyte.memberships` for
 merchant-controlled early access: save a draft, preview, schedule or cancel, and attest or
 revoke membership. They require a server at or after sandbox revision `alyte-sandbox-00133-v77`.
 See [the access-rule workflow](./README.md#access-rules-and-membership)
